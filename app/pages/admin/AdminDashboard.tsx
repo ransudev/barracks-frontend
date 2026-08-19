@@ -4,6 +4,7 @@ import { barbers } from "@/app/data/barbers";
 import { revenueByDay } from "@/app/data/reports";
 import type { ViewId } from "@/app/types/domain";
 import { formatCurrency } from "@/app/utils/format";
+import { downloadCsv } from "@/app/utils/download";
 import {
   Avatar,
   Button,
@@ -21,18 +22,26 @@ type AdminDashboardProps = {
 };
 
 export function AdminDashboard({ go, onToast }: AdminDashboardProps) {
+  function exportSummary() {
+    downloadCsv(
+      "barracks-daily-summary.csv",
+      ["Metric", "Value"],
+      [
+        ["Total revenue", "$2,485"],
+        ["Total customers", "156"],
+        ["Active staff", "5"],
+        ["Bookings today", "18"],
+      ],
+    );
+    onToast("Daily summary exported");
+  }
+
   return (
     <>
       <PageHeader
-        eyebrow="Tuesday, April 14, 2026"
         title="Business overview"
-        subtitle="A clear read on the shop, from first chair to final close."
         action={
-          <Button
-            variant="secondary"
-            icon="download"
-            onClick={() => onToast("Daily summary exported locally")}
-          >
+          <Button variant="secondary" icon="download" onClick={exportSummary}>
             Export summary
           </Button>
         }
@@ -55,14 +64,12 @@ export function AdminDashboard({ go, onToast }: AdminDashboardProps) {
         <MetricCard
           label="Active staff"
           value="5"
-          note="3 barbers · 2 staff"
           icon="briefcase"
           accent="violet"
         />
         <MetricCard
           label="Bookings today"
           value="18"
-          note="12 completed"
           icon="calendar"
           accent="amber"
         />
@@ -72,7 +79,6 @@ export function AdminDashboard({ go, onToast }: AdminDashboardProps) {
         <Panel className="revenue-overview">
           <SectionHeading
             title="Revenue overview"
-            description="A week in the life of the shop."
             action={
               <select className="table-select" defaultValue="This week">
                 <option>This week</option>
@@ -112,7 +118,6 @@ export function AdminDashboard({ go, onToast }: AdminDashboardProps) {
         <Panel className="barber-performance">
           <SectionHeading
             title="Barber performance"
-            description="Revenue contribution this week."
             action={
               <button
                 className="link-button"
@@ -154,7 +159,6 @@ export function AdminDashboard({ go, onToast }: AdminDashboardProps) {
           </span>
           <span>
             <strong>Staff management</strong>
-            <small>Manage access and permissions.</small>
           </span>
           <Icon name="arrowRight" size={16} />
         </button>
@@ -164,7 +168,6 @@ export function AdminDashboard({ go, onToast }: AdminDashboardProps) {
           </span>
           <span>
             <strong>Services</strong>
-            <small>Keep pricing and duration current.</small>
           </span>
           <Icon name="arrowRight" size={16} />
         </button>
@@ -174,7 +177,6 @@ export function AdminDashboard({ go, onToast }: AdminDashboardProps) {
           </span>
           <span>
             <strong>Reports</strong>
-            <small>Read what the numbers are saying.</small>
           </span>
           <Icon name="arrowRight" size={16} />
         </button>
@@ -184,7 +186,6 @@ export function AdminDashboard({ go, onToast }: AdminDashboardProps) {
           </span>
           <span>
             <strong>Inventory</strong>
-            <small>4 low stock items need a look.</small>
           </span>
           <Icon name="arrowRight" size={16} />
         </button>
@@ -192,10 +193,7 @@ export function AdminDashboard({ go, onToast }: AdminDashboardProps) {
 
       <div className="dashboard-lower-grid">
         <Panel>
-          <SectionHeading
-            title="Today’s activity"
-            description="The operating summary so far."
-          />
+          <SectionHeading title="Today’s activity" />
           <div className="activity-list">
             <div className="activity-row">
               <span className="activity-row__icon activity-row__icon--green">
@@ -228,27 +226,6 @@ export function AdminDashboard({ go, onToast }: AdminDashboardProps) {
               <strong>$745</strong>
             </div>
           </div>
-        </Panel>
-        <Panel className="management-note">
-          <span className="closing-note__stamp">
-            <Icon name="info" size={16} /> Manager’s note
-          </span>
-          <h2>
-            Keep the signal
-            <br />
-            <em>clean.</em>
-          </h2>
-          <p>
-            Revenue is strong, but the board is telling us to protect the 4:00
-            PM gap for walk-ins.
-          </p>
-          <button
-            className="link-button"
-            type="button"
-            onClick={() => onToast("Manager note saved locally")}
-          >
-            Save a note <Icon name="arrowRight" size={14} />
-          </button>
         </Panel>
       </div>
     </>

@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { staff as initialStaff } from "@/app/data/staff";
 import type { StaffMember } from "@/app/types/domain";
 import { createInitials } from "@/app/utils/format";
+import { usePersistentState } from "@/app/hooks/usePersistentState";
 import {
   Avatar,
   Badge,
@@ -24,9 +25,13 @@ export function StaffManagement({
 }: {
   onToast: (message: string) => void;
 }) {
-  const [items, setItems] = useState<StaffMember[]>(initialStaff);
+  const [items, setItems] = usePersistentState<StaffMember[]>(
+    "barracks-staff",
+    initialStaff,
+  );
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<StaffMember | null>(null);
   const [newStaff, setNewStaff] = useState({
     name: "",
     email: "",
@@ -64,12 +69,36 @@ export function StaffManagement({
     onToast(created.name + " added to staff");
   }
 
+  function saveStaff(event: FormEvent) {
+    event.preventDefault();
+    if (!editing?.name.trim() || !editing?.email.trim()) {
+      onToast("Name and email are required");
+      return;
+    }
+
+    setItems((list) =>
+      list.map((item) =>
+        item.id === editing.id
+          ? {
+              ...item,
+              name: editing.name.trim(),
+              initials: createInitials(editing.name),
+              email: editing.email.trim(),
+              phone: editing.phone.trim(),
+              role: editing.role,
+              status: editing.status,
+            }
+          : item,
+      ),
+    );
+    onToast(editing.name + " updated");
+    setEditing(null);
+  }
+
   return (
     <>
       <PageHeader
-        eyebrow="Management / People"
         title="Staff management"
-        subtitle="Manage access, roles, and the people who keep the shop running."
         action={
           <Button icon="userPlus" onClick={() => setModalOpen(true)}>
             Add staff
@@ -86,7 +115,6 @@ export function StaffManagement({
         <MetricCard
           label="Barbers"
           value={String(items.filter((item) => item.role === "Barber").length)}
-          note="3 on the floor today"
           icon="scissors"
           accent="green"
         />
@@ -95,7 +123,6 @@ export function StaffManagement({
           value={String(
             items.filter((item) => item.role === "Administrator").length,
           )}
-          note="Full access"
           icon="lock"
           accent="violet"
         />
@@ -104,7 +131,6 @@ export function StaffManagement({
       <Panel className="staff-table-panel">
         <SectionHeading
           title="All staff"
-          description="Access is simulated locally for this prototype."
           action={
             <SearchInput
               value={search}
@@ -146,10 +172,7 @@ export function StaffManagement({
               </span>
               <span>{item.email}</span>
               <span>
-                <Badge
-                  tone={item.status === "Active" ? "success" : "warning"}
-                  dot
-                >
+                <Badge tone={item.status === "Active" ? "success" : "warning"}>
                   {item.status}
                 </Badge>
               </span>
@@ -158,7 +181,7 @@ export function StaffManagement({
                 <button
                   className="row-action"
                   type="button"
-                  onClick={() => onToast("Editing " + item.name + " locally")}
+                  onClick={() => setEditing({ ...item })}
                 >
                   Edit
                 </button>
@@ -240,6 +263,83 @@ export function StaffManagement({
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={Boolean(editing)}
+        title="Edit staff member"
+        onClose={() => setEditing(null)}
+      >
+        {editing && (
+          <form className="modal-form" onSubmit={saveStaff}>
+            <TextField
+              label="Full name"
+              value={editing.name}
+              onChange={(event) =>
+                setEditing({ ...editing, name: event.target.value })
+              }
+            />
+            <TextField
+              label="Email address"
+              type="email"
+              value={editing.email}
+              onChange={(event) =>
+                setEditing({ ...editing, email: event.target.value })
+              }
+              icon="mail"
+            />
+            <TextField
+              label="Phone"
+              value={editing.phone}
+              onChange={(event) =>
+                setEditing({ ...editing, phone: event.target.value })
+              }
+              icon="phone"
+            />
+            <div className="form-grid form-grid--two">
+              <SelectField
+                label="Role"
+                value={editing.role}
+                onChange={(event) =>
+                  setEditing({
+                    ...editing,
+                    role: event.target.value as StaffMember["role"],
+                  })
+                }
+              >
+                <option>Front Desk</option>
+                <option>Barber</option>
+                <option>Administrator</option>
+              </SelectField>
+              <SelectField
+                label="Status"
+                value={editing.status}
+                onChange={(event) =>
+                  setEditing({
+                    ...editing,
+                    status: event.target.value as StaffMember["status"],
+                  })
+                }
+              >
+                <option>Active</option>
+                <option>On leave</option>
+                <option>Disabled</option>
+              </SelectField>
+            </div>
+            <div className="modal-actions">
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => setEditing(null)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" icon="check">
+                Save changes
+              </Button>
+            </div>
+          </form>
+        )}
       </Modal>
     </>
   );

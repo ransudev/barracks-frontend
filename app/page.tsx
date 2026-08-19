@@ -10,12 +10,19 @@ import { Toast } from "@/app/components/ui";
 import { inventory } from "@/app/data/inventory";
 import { queueEntries } from "@/app/data/queue";
 import { isAdminView } from "@/app/utils/view";
+import { usePersistentState } from "@/app/hooks/usePersistentState";
 import type { InventoryItem, QueueEntry, ViewId } from "@/app/types/domain";
 
 export default function Home() {
   const [view, setView] = useState<ViewId>("landing");
-  const [queue, setQueue] = useState<QueueEntry[]>(queueEntries);
-  const [stock, setStock] = useState<InventoryItem[]>(inventory);
+  const [queue, setQueue] = usePersistentState<QueueEntry[]>(
+    "barracks-queue",
+    queueEntries,
+  );
+  const [stock, setStock] = usePersistentState<InventoryItem[]>(
+    "barracks-inventory",
+    inventory,
+  );
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState("");
 

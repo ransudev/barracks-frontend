@@ -5,15 +5,18 @@ import { customers as initialCustomers } from "@/app/data/customers";
 import { transactions } from "@/app/data/transactions";
 import type { Customer } from "@/app/types/domain";
 import { createInitials, createSlug, formatCurrency } from "@/app/utils/format";
+import { usePersistentState } from "@/app/hooks/usePersistentState";
 import {
   Avatar,
   Button,
   EmptyState,
   MetricCard,
+  Modal,
   PageHeader,
   Panel,
   SearchInput,
   SectionHeading,
+  SelectField,
   TextField,
 } from "@/app/components/ui";
 import { Icon } from "@/app/components/ui/icons";
@@ -23,9 +26,19 @@ export function CustomersPage({
 }: {
   onToast: (message: string) => void;
 }) {
-  const [items, setItems] = useState<Customer[]>(initialCustomers);
+  const [items, setItems] = usePersistentState<Customer[]>(
+    "barracks-customers",
+    initialCustomers,
+  );
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(initialCustomers[0].id);
+  const [editing, setEditing] = useState<Customer | null>(null);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [booking, setBooking] = useState({
+    date: "2026-04-15",
+    time: "10:00",
+    service: "Haircut",
+  });
   const [newCustomer, setNewCustomer] = useState({
     name: "",
     phone: "",
@@ -66,12 +79,41 @@ export function CustomersPage({
     onToast(created.name + " registered in the shop book");
   }
 
+  function saveCustomer(event: FormEvent) {
+    event.preventDefault();
+    if (!editing?.name.trim() || !editing?.phone.trim()) {
+      onToast("Name and phone number are required");
+      return;
+    }
+    setItems((list) =>
+      list.map((item) =>
+        item.id === editing.id
+          ? {
+              ...item,
+              name: editing.name.trim(),
+              initials: createInitials(editing.name),
+              phone: editing.phone.trim(),
+              email: editing.email.trim() || "No email provided",
+              preferredBarber: editing.preferredBarber.trim() || "Not set",
+            }
+          : item,
+      ),
+    );
+    onToast(editing.name + " updated");
+    setEditing(null);
+  }
+
+  function createBooking(event: FormEvent) {
+    event.preventDefault();
+    if (!selected) return;
+    onToast("Booking requested for " + selected.name + " on " + booking.date);
+    setBookingOpen(false);
+  }
+
   return (
     <>
       <PageHeader
-        eyebrow="Customer book"
         title="Customers"
-        subtitle="A clear record of every person who trusts us with the chair."
         action={
           <Button
             icon="userPlus"
@@ -88,10 +130,7 @@ export function CustomersPage({
 
       <div className="customer-workspace">
         <Panel className="register-panel" id="register-customer">
-          <SectionHeading
-            title="Register new customer"
-            description="Keep the first visit frictionless."
-          />
+          <SectionHeading title="Register new customer" />
           <form onSubmit={addCustomer}>
             <TextField
               label="Full name"
@@ -128,7 +167,6 @@ export function CustomersPage({
         <Panel className="customer-list-panel">
           <SectionHeading
             title="Customer list"
-            description={items.length + " registered profiles."}
             action={
               <SearchInput
                 value={search}
@@ -194,7 +232,7 @@ export function CustomersPage({
                 variant="secondary"
                 size="sm"
                 icon="edit"
-                onClick={() => onToast("Editing " + selected.name + " locally")}
+                onClick={() => setEditing({ ...selected })}
               >
                 Edit profile
               </Button>
@@ -202,9 +240,7 @@ export function CustomersPage({
                 variant="ghost"
                 size="sm"
                 icon="calendar"
-                onClick={() =>
-                  onToast("New booking for " + selected.name + " opened")
-                }
+                onClick={() => setBookingOpen(true)}
               >
                 New booking
               </Button>
@@ -229,10 +265,7 @@ export function CustomersPage({
             </span>
           </div>
           <div className="customer-detail__history">
-            <SectionHeading
-              title="Visit history"
-              description="Recent services, all in one place."
-            />
+            <SectionHeading title="Visit history" />
             <div className="mini-table">
               <div>
                 <span>Date</span>
@@ -257,21 +290,18 @@ export function CustomersPage({
         <MetricCard
           label="Total loyalty points"
           value="1,970"
-          note="Across all customers"
           icon="spark"
           accent="amber"
         />
         <MetricCard
           label="Average per customer"
           value="328"
-          note="+12 this month"
           icon="chart"
           accent="blue"
         />
         <MetricCard
           label="Registered customers"
           value={String(items.length)}
-          note="+4 this week"
           icon="users"
           accent="violet"
         />
@@ -283,6 +313,111 @@ export function CustomersPage({
           accent="green"
         />
       </div>
+
+      <Modal
+        open={Boolean(editing)}
+        title="Edit customer profile"
+        onClose={() => setEditing(null)}
+      >
+        {editing && (
+          <form className="modal-form" onSubmit={saveCustomer}>
+            <TextField
+              label="Full name"
+              value={editing.name}
+              onChange={(event) =>
+                setEditing({ ...editing, name: event.target.value })
+              }
+            />
+            <TextField
+              label="Phone number"
+              value={editing.phone}
+              onChange={(event) =>
+                setEditing({ ...editing, phone: event.target.value })
+              }
+              icon="phone"
+            />
+            <TextField
+              label="Email address"
+              type="email"
+              value={editing.email}
+              onChange={(event) =>
+                setEditing({ ...editing, email: event.target.value })
+              }
+              icon="mail"
+            />
+            <TextField
+              label="Preferred barber"
+              value={editing.preferredBarber}
+              onChange={(event) =>
+                setEditing({ ...editing, preferredBarber: event.target.value })
+              }
+            />
+            <div className="modal-actions">
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => setEditing(null)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" icon="check">
+                Save changes
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      <Modal
+        open={bookingOpen}
+        title={selected ? "New booking for " + selected.name : "New booking"}
+        onClose={() => setBookingOpen(false)}
+      >
+        <form className="modal-form" onSubmit={createBooking}>
+          <div className="form-grid form-grid--two">
+            <TextField
+              label="Date"
+              type="date"
+              value={booking.date}
+              onChange={(event) =>
+                setBooking({ ...booking, date: event.target.value })
+              }
+            />
+            <TextField
+              label="Time"
+              type="time"
+              value={booking.time}
+              onChange={(event) =>
+                setBooking({ ...booking, time: event.target.value })
+              }
+            />
+          </div>
+          <SelectField
+            label="Service"
+            value={booking.service}
+            onChange={(event) =>
+              setBooking({ ...booking, service: event.target.value })
+            }
+          >
+            <option>Haircut</option>
+            <option>Beard Trim</option>
+            <option>Haircut + Beard Trim</option>
+            <option>Full Service</option>
+          </SelectField>
+          <div className="modal-actions">
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => setBookingOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" icon="calendar">
+              Create booking
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </>
   );
 }

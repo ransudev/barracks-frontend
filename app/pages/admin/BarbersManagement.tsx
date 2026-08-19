@@ -2,8 +2,10 @@
 
 import { useState, type FormEvent } from "react";
 import { barbers as initialBarbers } from "@/app/data/barbers";
+import { bookings } from "@/app/data/bookings";
 import type { Barber } from "@/app/types/domain";
 import { createInitials, createSlug, formatCurrency } from "@/app/utils/format";
+import { usePersistentState } from "@/app/hooks/usePersistentState";
 import {
   Avatar,
   Badge,
@@ -23,8 +25,15 @@ export function BarbersManagement({
 }: {
   onToast: (message: string) => void;
 }) {
-  const [items, setItems] = useState<Barber[]>(initialBarbers);
+  const [items, setItems] = usePersistentState<Barber[]>(
+    "barracks-barbers",
+    initialBarbers,
+  );
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Barber | null>(null);
+  const [scheduleBarber, setScheduleBarber] = useState<Barber | null>(null);
+  const [commissionModalOpen, setCommissionModalOpen] = useState(false);
+  const [commissionRate, setCommissionRate] = useState("30");
   const [newBarber, setNewBarber] = useState({ name: "", specialty: "" });
 
   function addBarber(event: FormEvent) {
@@ -56,18 +65,51 @@ export function BarbersManagement({
     onToast(created.name + " added to the barber roster");
   }
 
+  function saveBarber(event: FormEvent) {
+    event.preventDefault();
+    if (!editing?.name.trim()) {
+      onToast("Add a barber name first");
+      return;
+    }
+
+    setItems((list) =>
+      list.map((item) =>
+        item.id === editing.id
+          ? {
+              ...item,
+              name: editing.name.trim(),
+              initials: createInitials(editing.name),
+              specialty: editing.specialty.trim() || "Cuts + styling",
+              status: editing.status,
+            }
+          : item,
+      ),
+    );
+    onToast(editing.name + " updated");
+    setEditing(null);
+  }
+
+  function saveCommission(event: FormEvent) {
+    event.preventDefault();
+    const rate = Number(commissionRate);
+    if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+      onToast("Enter a commission rate between 0 and 100");
+      return;
+    }
+    onToast("Commission rate updated to " + rate + "%");
+    setCommissionModalOpen(false);
+  }
+
   return (
     <>
       <PageHeader
-        eyebrow="Management / People"
         title="Barber management"
-        subtitle="Schedules, performance, and the craft behind every service."
         action={
           <div className="page-header__actions">
             <Button
               variant="secondary"
               icon="sliders"
-              onClick={() => onToast("Commission rate editor opened")}
+              onClick={() => setCommissionModalOpen(true)}
             >
               Set commission rate
             </Button>
@@ -94,14 +136,12 @@ export function BarbersManagement({
         <MetricCard
           label="Commission rate"
           value="30%"
-          note="Default for all barbers"
           icon="spark"
           accent="amber"
         />
         <MetricCard
           label="Total commission"
           value="$745.50"
-          note="This week"
           icon="chart"
           accent="violet"
         />
@@ -110,7 +150,6 @@ export function BarbersManagement({
       <Panel className="barber-management-panel">
         <SectionHeading
           title="Barbers"
-          description="The full roster and its working signal."
           action={
             <SelectField value="This week" onChange={() => undefined}>
               <option>This week</option>
@@ -140,7 +179,6 @@ export function BarbersManagement({
                         ? "warning"
                         : "neutral"
                   }
-                  dot
                 >
                   {barber.status}
                 </Badge>
@@ -173,7 +211,7 @@ export function BarbersManagement({
                 <button
                   className="row-action"
                   type="button"
-                  onClick={() => onToast("Editing " + barber.name + " locally")}
+                  onClick={() => setEditing({ ...barber })}
                 >
                   <Icon name="edit" size={14} />
                   Edit profile
@@ -181,9 +219,7 @@ export function BarbersManagement({
                 <button
                   className="row-action"
                   type="button"
-                  onClick={() =>
-                    onToast("Viewing " + barber.name + "'s schedule")
-                  }
+                  onClick={() => setScheduleBarber(barber)}
                 >
                   View schedule <Icon name="arrowRight" size={14} />
                 </button>
@@ -229,6 +265,126 @@ export function BarbersManagement({
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={Boolean(editing)}
+        title="Edit barber profile"
+        onClose={() => setEditing(null)}
+      >
+        {editing && (
+          <form className="modal-form" onSubmit={saveBarber}>
+            <TextField
+              label="Barber name"
+              value={editing.name}
+              onChange={(event) =>
+                setEditing({ ...editing, name: event.target.value })
+              }
+            />
+            <TextField
+              label="Specialty"
+              value={editing.specialty}
+              onChange={(event) =>
+                setEditing({ ...editing, specialty: event.target.value })
+              }
+            />
+            <SelectField
+              label="Status"
+              value={editing.status}
+              onChange={(event) =>
+                setEditing({
+                  ...editing,
+                  status: event.target.value as Barber["status"],
+                })
+              }
+            >
+              <option>On floor</option>
+              <option>On break</option>
+              <option>Off today</option>
+            </SelectField>
+            <div className="modal-actions">
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => setEditing(null)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" icon="check">
+                Save changes
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      <Modal
+        open={commissionModalOpen}
+        title="Commission rate"
+        onClose={() => setCommissionModalOpen(false)}
+      >
+        <form className="modal-form" onSubmit={saveCommission}>
+          <TextField
+            label="Default commission rate"
+            type="number"
+            min="0"
+            max="100"
+            step="0.5"
+            value={commissionRate}
+            onChange={(event) => setCommissionRate(event.target.value)}
+          />
+          <div className="modal-actions">
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => setCommissionModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" icon="check">
+              Save rate
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={Boolean(scheduleBarber)}
+        title={scheduleBarber ? scheduleBarber.name + " schedule" : "Schedule"}
+        onClose={() => setScheduleBarber(null)}
+      >
+        <div className="detail-modal">
+          {bookings
+            .filter((booking) => booking.barber === scheduleBarber?.name)
+            .map((booking) => (
+              <div className="detail-modal__row" key={booking.id}>
+                <strong>
+                  {booking.time} {booking.meridiem}
+                </strong>
+                <span>
+                  {booking.customer} · {booking.service}
+                </span>
+                <Badge
+                  tone={
+                    booking.status === "Completed"
+                      ? "success"
+                      : booking.status === "Upcoming"
+                        ? "warning"
+                        : "danger"
+                  }
+                >
+                  {booking.status}
+                </Badge>
+              </div>
+            ))}
+          {!bookings.some(
+            (booking) => booking.barber === scheduleBarber?.name,
+          ) && (
+            <p className="modal-empty">
+              No bookings scheduled for this barber.
+            </p>
+          )}
+        </div>
       </Modal>
     </>
   );

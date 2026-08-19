@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { services as initialServices } from "@/app/data/services";
 import type { Service } from "@/app/types/domain";
 import { createSlug, formatCurrency } from "@/app/utils/format";
+import { usePersistentState } from "@/app/hooks/usePersistentState";
 import {
   Badge,
   Button,
@@ -12,6 +13,7 @@ import {
   PageHeader,
   Panel,
   SectionHeading,
+  SelectField,
   TextField,
 } from "@/app/components/ui";
 
@@ -20,8 +22,14 @@ export function ServicesManagement({
 }: {
   onToast: (message: string) => void;
 }) {
-  const [items, setItems] = useState<Service[]>(initialServices);
+  const [items, setItems] = usePersistentState<Service[]>(
+    "barracks-services",
+    initialServices,
+  );
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Service | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filter, setFilter] = useState("All");
   const [newService, setNewService] = useState({
     name: "",
     description: "",
@@ -56,12 +64,39 @@ export function ServicesManagement({
     onToast(created.name + " added to services");
   }
 
+  function saveService(event: FormEvent) {
+    event.preventDefault();
+    if (!editing?.name.trim() || !editing?.description.trim()) {
+      onToast("Service name and description are required");
+      return;
+    }
+    const price = Number(editing.price);
+    if (!Number.isFinite(price) || price < 0) {
+      onToast("Enter a valid service price");
+      return;
+    }
+
+    setItems((list) =>
+      list.map((item) =>
+        item.id === editing.id
+          ? { ...editing, name: editing.name.trim(), price }
+          : item,
+      ),
+    );
+    onToast(editing.name + " updated");
+    setEditing(null);
+  }
+
+  const visibleItems = items.filter(
+    (service) =>
+      filter === "All" ||
+      (filter === "Active" ? service.active : !service.active),
+  );
+
   return (
     <>
       <PageHeader
-        eyebrow="Management / Menu"
         title="Services"
-        subtitle="Keep the menu clear, current, and worth the time in the chair."
         action={
           <Button icon="plus" onClick={() => setModalOpen(true)}>
             Add service
@@ -80,14 +115,12 @@ export function ServicesManagement({
           value={formatCurrency(
             items.reduce((total, item) => total + item.price, 0) / items.length,
           )}
-          note="Across active services"
           icon="wallet"
           accent="green"
         />
         <MetricCard
           label="Most popular"
           value="Haircut"
-          note="34% of revenue"
           icon="star"
           accent="amber"
         />
@@ -96,13 +129,12 @@ export function ServicesManagement({
       <Panel className="services-panel">
         <SectionHeading
           title="All services"
-          description="Edit pricing, duration, and availability."
           action={
             <Button
               variant="ghost"
               size="sm"
               icon="filter"
-              onClick={() => onToast("Service filters opened")}
+              onClick={() => setFilterOpen(true)}
             >
               Filters
             </Button>
@@ -117,21 +149,16 @@ export function ServicesManagement({
             <span>Status</span>
             <span>Actions</span>
           </div>
-          {items.map((service) => (
+          {visibleItems.map((service) => (
             <div className="services-table__row" key={service.id}>
               <span>
-                <span
-                  className={
-                    "service-status-dot " + (service.active ? "is-active" : "")
-                  }
-                />
                 <strong>{service.name}</strong>
               </span>
               <span>{service.description}</span>
               <span>{service.duration}</span>
               <strong>{formatCurrency(service.price)}</strong>
               <span>
-                <Badge tone={service.active ? "success" : "warning"} dot>
+                <Badge tone={service.active ? "success" : "warning"}>
                   {service.active ? "Active" : "Inactive"}
                 </Badge>
               </span>
@@ -139,9 +166,7 @@ export function ServicesManagement({
                 <button
                   className="row-action"
                   type="button"
-                  onClick={() =>
-                    onToast("Editing " + service.name + " locally")
-                  }
+                  onClick={() => setEditing({ ...service })}
                 >
                   Edit
                 </button>
@@ -228,6 +253,98 @@ export function ServicesManagement({
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={Boolean(editing)}
+        title="Edit service"
+        onClose={() => setEditing(null)}
+      >
+        {editing && (
+          <form className="modal-form" onSubmit={saveService}>
+            <TextField
+              label="Service name"
+              value={editing.name}
+              onChange={(event) =>
+                setEditing({ ...editing, name: event.target.value })
+              }
+            />
+            <TextField
+              label="Description"
+              value={editing.description}
+              onChange={(event) =>
+                setEditing({ ...editing, description: event.target.value })
+              }
+            />
+            <div className="form-grid form-grid--two">
+              <TextField
+                label="Duration"
+                value={editing.duration}
+                onChange={(event) =>
+                  setEditing({ ...editing, duration: event.target.value })
+                }
+              />
+              <TextField
+                label="Price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={String(editing.price)}
+                onChange={(event) =>
+                  setEditing({ ...editing, price: Number(event.target.value) })
+                }
+              />
+            </div>
+            <SelectField
+              label="Status"
+              value={editing.active ? "Active" : "Inactive"}
+              onChange={(event) =>
+                setEditing({
+                  ...editing,
+                  active: event.target.value === "Active",
+                })
+              }
+            >
+              <option>Active</option>
+              <option>Inactive</option>
+            </SelectField>
+            <div className="modal-actions">
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => setEditing(null)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" icon="check">
+                Save changes
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      <Modal
+        open={filterOpen}
+        title="Filter services"
+        onClose={() => setFilterOpen(false)}
+      >
+        <div className="modal-form">
+          <SelectField
+            label="Show"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+          >
+            <option>All</option>
+            <option>Active</option>
+            <option>Inactive</option>
+          </SelectField>
+          <div className="modal-actions">
+            <Button type="button" onClick={() => setFilterOpen(false)}>
+              Apply filter
+            </Button>
+          </div>
+        </div>
       </Modal>
     </>
   );

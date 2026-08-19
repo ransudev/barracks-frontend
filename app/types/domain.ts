@@ -19,7 +19,6 @@ export type ViewId =
   | "admin-inventory"
   | "admin-settings";
 
-export type AppRole = "staff" | "admin" | "customer";
 export type ShellArea = "staff" | "admin";
 
 export type Barber = {

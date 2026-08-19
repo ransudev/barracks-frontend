@@ -18,16 +18,13 @@ import { Icon } from "@/app/components/ui/icons";
 
 type StaffDashboardProps = {
   go: (view: ViewId) => void;
-  onToast: (message: string) => void;
 };
 
-export function StaffDashboard({ go, onToast }: StaffDashboardProps) {
+export function StaffDashboard({ go }: StaffDashboardProps) {
   return (
     <>
       <PageHeader
-        eyebrow="Tuesday, April 14, 2026"
         title="Good afternoon, Jules."
-        subtitle="The shop is moving well. Here’s the pulse of the floor."
         action={
           <Button icon="plus" onClick={() => go("queue")}>
             Add to queue
@@ -45,14 +42,12 @@ export function StaffDashboard({ go, onToast }: StaffDashboardProps) {
         <MetricCard
           label="Today’s bookings"
           value="12"
-          note="3 remaining"
           icon="calendar"
           accent="violet"
         />
         <MetricCard
           label="Active barbers"
           value="3"
-          note="1 on break"
           icon="scissors"
           accent="green"
         />
@@ -69,7 +64,6 @@ export function StaffDashboard({ go, onToast }: StaffDashboardProps) {
         <Panel className="queue-preview">
           <SectionHeading
             title="Live queue"
-            description="The next people through the chair."
             action={
               <button
                 className="link-button"
@@ -118,7 +112,6 @@ export function StaffDashboard({ go, onToast }: StaffDashboardProps) {
         <Panel className="schedule-preview">
           <SectionHeading
             title="Next on the book"
-            description="Your remaining appointments."
             action={
               <button
                 className="link-button"
@@ -133,9 +126,11 @@ export function StaffDashboard({ go, onToast }: StaffDashboardProps) {
             {bookings
               .filter((booking) => booking.status === "Upcoming")
               .slice(0, 3)
-              .map((booking) => (
+              .map((booking, index) => (
                 <button
-                  className="schedule-row"
+                  className={
+                    "schedule-row " + (index === 0 ? "is-priority" : "")
+                  }
                   type="button"
                   key={booking.id}
                   onClick={() => go("bookings")}
@@ -167,7 +162,6 @@ export function StaffDashboard({ go, onToast }: StaffDashboardProps) {
           </span>
           <span>
             <strong>Register customer</strong>
-            <small>Add a new record to the shop book.</small>
           </span>
           <Icon name="arrowRight" size={16} />
         </button>
@@ -177,7 +171,6 @@ export function StaffDashboard({ go, onToast }: StaffDashboardProps) {
           </span>
           <span>
             <strong>Process payment</strong>
-            <small>Close out a service in seconds.</small>
           </span>
           <Icon name="arrowRight" size={16} />
         </button>
@@ -187,7 +180,6 @@ export function StaffDashboard({ go, onToast }: StaffDashboardProps) {
           </span>
           <span>
             <strong>Inventory alert</strong>
-            <small>4 items need attention today.</small>
           </span>
           <Icon name="arrowRight" size={16} />
         </button>
@@ -195,10 +187,7 @@ export function StaffDashboard({ go, onToast }: StaffDashboardProps) {
 
       <div className="dashboard-lower-grid">
         <Panel>
-          <SectionHeading
-            title="Barber availability"
-            description="Who is ready for the next chair."
-          />
+          <SectionHeading title="Barber availability" />
           <div className="availability-list">
             {barbers.slice(0, 3).map((barber) => (
               <div className="availability-row" key={barber.id}>
@@ -213,34 +202,12 @@ export function StaffDashboard({ go, onToast }: StaffDashboardProps) {
                 </span>
                 <Badge
                   tone={barber.status === "On floor" ? "success" : "warning"}
-                  dot
                 >
                   {barber.status}
                 </Badge>
               </div>
             ))}
           </div>
-        </Panel>
-        <Panel className="closing-note">
-          <span className="closing-note__stamp">
-            <Icon name="spark" size={17} /> Shift note
-          </span>
-          <h2>
-            Keep the pace
-            <br />
-            <em>deliberate.</em>
-          </h2>
-          <p>
-            There’s a little room between the 3:00 and 4:15 bookings. Good
-            window for a reset and a proper clean-down.
-          </p>
-          <button
-            className="link-button"
-            type="button"
-            onClick={() => onToast("Shift note saved locally")}
-          >
-            Save a note <Icon name="arrowRight" size={14} />
-          </button>
         </Panel>
       </div>
     </>

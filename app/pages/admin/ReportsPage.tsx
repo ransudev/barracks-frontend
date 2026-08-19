@@ -9,6 +9,7 @@ import {
   Avatar,
   Button,
   MetricCard,
+  Modal,
   PageHeader,
   Panel,
   ProgressBar,
@@ -16,6 +17,7 @@ import {
   SelectField,
 } from "@/app/components/ui";
 import { Icon } from "@/app/components/ui/icons";
+import { downloadCsv } from "@/app/utils/download";
 
 export function ReportsPage({
   onToast,
@@ -23,12 +25,41 @@ export function ReportsPage({
   onToast: (message: string) => void;
 }) {
   const [range, setRange] = useState("This month");
+  const [ledgerOpen, setLedgerOpen] = useState(false);
+
+  function exportReport() {
+    const filename =
+      "barracks-" +
+      range.toLowerCase().replace(/[^a-z0-9]+/g, "-") +
+      "-report.csv";
+    downloadCsv(
+      filename,
+      [
+        "Date",
+        "Customer",
+        "Service",
+        "Barber",
+        "Payment method",
+        "Amount",
+        "Status",
+      ],
+      transactions.map((transaction) => [
+        transaction.date,
+        transaction.customer,
+        transaction.service,
+        transaction.barber,
+        transaction.method,
+        transaction.amount,
+        transaction.status,
+      ]),
+    );
+    onToast(range + " report exported");
+  }
+
   return (
     <>
       <PageHeader
-        eyebrow="Management / Signal"
         title="Reports & analytics"
-        subtitle="The bigger picture, made useful."
         action={
           <div className="page-header__actions">
             <SelectField
@@ -39,11 +70,7 @@ export function ReportsPage({
               <option>Last month</option>
               <option>This quarter</option>
             </SelectField>
-            <Button
-              variant="success"
-              icon="download"
-              onClick={() => onToast(range + " report exported locally")}
-            >
+            <Button variant="success" icon="download" onClick={exportReport}>
               Export
             </Button>
           </div>
@@ -74,7 +101,6 @@ export function ReportsPage({
         <MetricCard
           label="Commission paid"
           value="$3,745"
-          note="To 3 barbers"
           icon="spark"
           accent="amber"
         />
@@ -82,10 +108,7 @@ export function ReportsPage({
 
       <div className="report-grid">
         <Panel>
-          <SectionHeading
-            title="Revenue by service"
-            description="Where the month is coming from."
-          />
+          <SectionHeading title="Revenue by service" />
           <div className="report-bars">
             {revenueByService.map((item) => (
               <div className="report-bar" key={item.label}>
@@ -102,10 +125,7 @@ export function ReportsPage({
           </div>
         </Panel>
         <Panel>
-          <SectionHeading
-            title="Top customers"
-            description="The regulars who keep coming back."
-          />
+          <SectionHeading title="Top customers" />
           <div className="top-customers">
             {customers.slice(0, 5).map((customer, index) => (
               <div key={customer.id}>
@@ -126,15 +146,14 @@ export function ReportsPage({
         </Panel>
       </div>
 
-      <Panel className="report-transactions">
+      <Panel className="report-transactions" id="report-transactions">
         <SectionHeading
           title="Recent transactions"
-          description="A clean ledger of the latest activity."
           action={
             <button
               className="link-button"
               type="button"
-              onClick={() => onToast("Full transaction ledger opened")}
+              onClick={() => setLedgerOpen(true)}
             >
               View all <Icon name="arrowRight" size={14} />
             </button>
@@ -161,6 +180,42 @@ export function ReportsPage({
           ))}
         </div>
       </Panel>
+
+      <Modal
+        open={ledgerOpen}
+        title="Transaction ledger"
+        description="All recorded transactions in the selected report range."
+        onClose={() => setLedgerOpen(false)}
+        width="lg"
+      >
+        <div className="detail-modal">
+          <div className="report-transaction-table">
+            <div>
+              <span>Date</span>
+              <span>Customer</span>
+              <span>Service</span>
+              <span>Barber</span>
+              <span>Amount</span>
+            </div>
+            {transactions.map((transaction) => (
+              <div key={transaction.id}>
+                <span>{transaction.date}</span>
+                <strong>{transaction.customer}</strong>
+                <span>{transaction.service}</span>
+                <span>{transaction.barber}</span>
+                <strong className="text-green">
+                  {formatCurrency(transaction.amount)}
+                </strong>
+              </div>
+            ))}
+          </div>
+          <div className="modal-actions">
+            <Button type="button" onClick={() => setLedgerOpen(false)}>
+              Done
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }

@@ -7,10 +7,12 @@ import { services } from "@/app/data/services";
 import { transactions as initialTransactions } from "@/app/data/transactions";
 import type { IconName } from "@/app/components/ui/icons";
 import { formatCurrency } from "@/app/utils/format";
+import { usePersistentState } from "@/app/hooks/usePersistentState";
 import {
   Avatar,
   Button,
   MetricCard,
+  Modal,
   PageHeader,
   Panel,
   SectionHeading,
@@ -27,7 +29,11 @@ export function PaymentPage({
   const [serviceId, setServiceId] = useState(services[0].id);
   const [barberId, setBarberId] = useState(barbers[0].id);
   const [method, setMethod] = useState("Card");
-  const [recent, setRecent] = useState(initialTransactions);
+  const [recent, setRecent] = usePersistentState(
+    "barracks-transactions",
+    initialTransactions,
+  );
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const selectedCustomer =
     customers.find((customer) => customer.id === customerId) ?? customers[0];
@@ -35,6 +41,11 @@ export function PaymentPage({
     services.find((service) => service.id === serviceId) ?? services[0];
   const selectedBarber =
     barbers.find((barber) => barber.id === barberId) ?? barbers[0];
+  const revenue = recent.reduce(
+    (total, transaction) => total + transaction.amount,
+    0,
+  );
+  const averageTransaction = recent.length ? revenue / recent.length : 0;
 
   function completePayment() {
     setRecent((list) => [
@@ -66,14 +77,15 @@ export function PaymentPage({
   return (
     <>
       <PageHeader
-        eyebrow="Till / Front desk"
         title="Process payment"
-        subtitle="Close the service, keep the record clean."
         action={
           <Button
             variant="ghost"
             icon="refresh"
-            onClick={() => onToast("Payment workspace refreshed")}
+            onClick={() => {
+              setRecent((list) => [...list]);
+              onToast("Payment workspace refreshed");
+            }}
           >
             Refresh
           </Button>
@@ -82,29 +94,26 @@ export function PaymentPage({
       <div className="metrics-grid metrics-grid--four">
         <MetricCard
           label="Today’s revenue"
-          value="$485"
+          value={formatCurrency(revenue)}
           change="+15% from yesterday"
           icon="wallet"
           accent="green"
         />
         <MetricCard
           label="Transactions"
-          value="12"
-          note="9 completed"
+          value={String(recent.length)}
           icon="creditCard"
           accent="blue"
         />
         <MetricCard
           label="Average transaction"
-          value="$40.42"
-          note="Across today’s services"
+          value={formatCurrency(averageTransaction)}
           icon="chart"
           accent="violet"
         />
         <MetricCard
           label="Commission due"
           value="$145.50"
-          note="30% standard rate"
           icon="spark"
           accent="amber"
         />
@@ -112,10 +121,7 @@ export function PaymentPage({
 
       <div className="payment-grid">
         <Panel className="payment-form-panel">
-          <SectionHeading
-            title="New transaction"
-            description="Select the customer, service, and barber."
-          />
+          <SectionHeading title="New transaction" />
           <div className="form-grid">
             <SelectField
               label="Customer"
@@ -197,12 +203,11 @@ export function PaymentPage({
         <Panel className="recent-transactions-panel">
           <SectionHeading
             title="Recent transactions"
-            description="The last five completed services."
             action={
               <button
                 className="link-button"
                 type="button"
-                onClick={() => onToast("Transaction history opened")}
+                onClick={() => setHistoryOpen(true)}
               >
                 View all <Icon name="arrowRight" size={14} />
               </button>
@@ -236,6 +241,48 @@ export function PaymentPage({
           </div>
         </Panel>
       </div>
+
+      <Modal
+        open={historyOpen}
+        title="Transaction history"
+        description="All transactions recorded in this workspace."
+        onClose={() => setHistoryOpen(false)}
+        width="lg"
+      >
+        <div className="detail-modal">
+          <div className="transaction-list">
+            {recent.map((transaction) => (
+              <div className="transaction-row" key={transaction.id}>
+                <Avatar
+                  initials={transaction.customer
+                    .split(" ")
+                    .map((name) => name[0])
+                    .join("")}
+                  tone="slate"
+                  size="sm"
+                />
+                <span>
+                  <strong>{transaction.customer}</strong>
+                  <small>
+                    {transaction.service + " · " + transaction.method}
+                  </small>
+                </span>
+                <span>
+                  <strong className="text-green">
+                    {formatCurrency(transaction.amount)}
+                  </strong>
+                  <small>{transaction.date}</small>
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="modal-actions">
+            <Button type="button" onClick={() => setHistoryOpen(false)}>
+              Done
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }

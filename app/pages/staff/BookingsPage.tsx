@@ -1,9 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { barbers } from "@/app/data/barbers";
 import { bookings as initialBookings } from "@/app/data/bookings";
+import { customers } from "@/app/data/customers";
+import { services } from "@/app/data/services";
 import type { Booking } from "@/app/types/domain";
-import { formatCurrency } from "@/app/utils/format";
+import { createInitials, formatCurrency } from "@/app/utils/format";
+import { usePersistentState } from "@/app/hooks/usePersistentState";
 import {
   Avatar,
   Badge,
@@ -15,7 +19,9 @@ import {
   Panel,
   SearchInput,
   SectionHeading,
+  SelectField,
   Tabs,
+  TextField,
 } from "@/app/components/ui";
 import { Icon } from "@/app/components/ui/icons";
 
@@ -24,10 +30,26 @@ export function BookingsPage({
 }: {
   onToast: (message: string) => void;
 }) {
-  const [items, setItems] = useState<Booking[]>(initialBookings);
+  const [items, setItems] = usePersistentState<Booking[]>(
+    "barracks-bookings",
+    initialBookings,
+  );
   const [tab, setTab] = useState("today");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Booking | null>(null);
+  const [editing, setEditing] = useState<Booking | null>(null);
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filterBarber, setFilterBarber] = useState("All barbers");
+  const [filterService, setFilterService] = useState("All services");
+  const [draft, setDraft] = useState({
+    customer: customers[0].name,
+    service: services[0].name,
+    barber: barbers[0].name,
+    time: "10:00",
+    meridiem: "AM",
+    price: String(services[0].price),
+  });
 
   const counts = {
     today: items.length,
@@ -49,6 +71,9 @@ export function BookingsPage({
         const query = search.toLowerCase();
         return (
           matchesTab &&
+          (filterBarber === "All barbers" || item.barber === filterBarber) &&
+          (filterService === "All services" ||
+            item.service === filterService) &&
           (!query ||
             (
               item.customer +
@@ -63,20 +88,74 @@ export function BookingsPage({
               .includes(query))
         );
       }),
-    [items, search, tab],
+    [filterBarber, filterService, items, search, tab],
   );
+
+  function openNewBooking() {
+    const service = services[0];
+    setDraft({
+      customer: customers[0].name,
+      service: service.name,
+      barber: barbers[0].name,
+      time: "10:00",
+      meridiem: "AM",
+      price: String(service.price),
+    });
+    setBookingModalOpen(true);
+  }
+
+  function handleDraftService(name: string) {
+    const service = services.find((item) => item.name === name);
+    setDraft({
+      ...draft,
+      service: name,
+      price: String(service?.price ?? 0),
+    });
+  }
+
+  function addBooking(event: React.FormEvent) {
+    event.preventDefault();
+    if (!draft.customer || !draft.service || !draft.barber || !draft.time) {
+      onToast("Complete the booking details first");
+      return;
+    }
+    const service = services.find((item) => item.name === draft.service);
+    const created: Booking = {
+      id: "BK-" + (1054 + items.length),
+      time: draft.time,
+      meridiem: draft.meridiem,
+      customer: draft.customer,
+      initials: createInitials(draft.customer),
+      service: draft.service,
+      barber: draft.barber,
+      price: service?.price ?? Number(draft.price),
+      status: "Upcoming",
+      tone: "slate",
+    };
+    setItems((list) => [created, ...list]);
+    setBookingModalOpen(false);
+    onToast(created.id + " created");
+  }
+
+  function saveBooking(event: React.FormEvent) {
+    event.preventDefault();
+    if (!editing?.customer || !editing.service || !editing.barber) {
+      onToast("Complete the booking details first");
+      return;
+    }
+    setItems((list) =>
+      list.map((item) => (item.id === editing.id ? editing : item)),
+    );
+    onToast(editing.id + " updated");
+    setEditing(null);
+  }
 
   return (
     <>
       <PageHeader
-        eyebrow="Schedule / Today"
         title="Bookings"
-        subtitle="The appointments that keep the day in rhythm."
         action={
-          <Button
-            icon="plus"
-            onClick={() => onToast("New booking form opened")}
-          >
+          <Button icon="plus" onClick={openNewBooking}>
             New booking
           </Button>
         }
@@ -101,28 +180,26 @@ export function BookingsPage({
       <div className="metrics-grid metrics-grid--four">
         <MetricCard
           label="Total bookings"
-          value="12"
+          value={String(items.length)}
           icon="calendar"
           accent="blue"
         />
         <MetricCard
           label="Completed"
-          value="9"
+          value={String(counts.completed)}
           change="75% of day"
           icon="checkCircle"
           accent="green"
         />
         <MetricCard
           label="Remaining"
-          value="3"
-          note="Next at 2:30 PM"
+          value={String(counts.upcoming)}
           icon="clock"
           accent="amber"
         />
         <MetricCard
           label="Cancelled"
-          value="1"
-          note="Within normal range"
+          value={String(counts.cancelled)}
           icon="x"
           accent="red"
         />
@@ -135,18 +212,12 @@ export function BookingsPage({
               ? "Today’s schedule"
               : tab[0].toUpperCase() + tab.slice(1) + " bookings"
           }
-          description={
-            visible.length +
-            " booking" +
-            (visible.length === 1 ? "" : "s") +
-            " in this view."
-          }
           action={
             <Button
               variant="ghost"
               size="sm"
               icon="filter"
-              onClick={() => onToast("Booking filters opened")}
+              onClick={() => setFiltersOpen(true)}
             >
               Filters
             </Button>
@@ -191,7 +262,6 @@ export function BookingsPage({
                           ? "warning"
                           : "danger"
                     }
-                    dot
                   >
                     {booking.status}
                   </Badge>
@@ -265,8 +335,8 @@ export function BookingsPage({
             <Button
               variant="secondary"
               onClick={() => {
+                if (selected) setEditing({ ...selected });
                 setSelected(null);
-                onToast("Booking editing is simulated");
               }}
             >
               Edit booking
@@ -283,12 +353,204 @@ export function BookingsPage({
                     ),
                   );
                   setSelected(null);
-                  onToast("Booking cancelled locally");
+                  onToast("Booking cancelled");
                 }}
               >
                 Cancel booking
               </Button>
             )}
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={bookingModalOpen}
+        title="New booking"
+        onClose={() => setBookingModalOpen(false)}
+      >
+        <form className="modal-form" onSubmit={addBooking}>
+          <SelectField
+            label="Customer"
+            value={draft.customer}
+            onChange={(event) =>
+              setDraft({ ...draft, customer: event.target.value })
+            }
+          >
+            {customers.map((customer) => (
+              <option key={customer.id}>{customer.name}</option>
+            ))}
+          </SelectField>
+          <SelectField
+            label="Service"
+            value={draft.service}
+            onChange={(event) => handleDraftService(event.target.value)}
+          >
+            {services
+              .filter((service) => service.active)
+              .map((service) => (
+                <option key={service.id}>{service.name}</option>
+              ))}
+          </SelectField>
+          <SelectField
+            label="Barber"
+            value={draft.barber}
+            onChange={(event) =>
+              setDraft({ ...draft, barber: event.target.value })
+            }
+          >
+            {barbers.map((barber) => (
+              <option key={barber.id}>{barber.name}</option>
+            ))}
+          </SelectField>
+          <div className="form-grid form-grid--two">
+            <TextField
+              label="Time"
+              type="time"
+              value={draft.time}
+              onChange={(event) =>
+                setDraft({ ...draft, time: event.target.value })
+              }
+            />
+            <SelectField
+              label="Period"
+              value={draft.meridiem}
+              onChange={(event) =>
+                setDraft({ ...draft, meridiem: event.target.value })
+              }
+            >
+              <option>AM</option>
+              <option>PM</option>
+            </SelectField>
+          </div>
+          <div className="modal-actions">
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => setBookingModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" icon="calendar">
+              Create booking
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={Boolean(editing)}
+        title="Edit booking"
+        onClose={() => setEditing(null)}
+      >
+        {editing && (
+          <form className="modal-form" onSubmit={saveBooking}>
+            <SelectField
+              label="Customer"
+              value={editing.customer}
+              onChange={(event) =>
+                setEditing({
+                  ...editing,
+                  customer: event.target.value,
+                  initials: createInitials(event.target.value),
+                })
+              }
+            >
+              {customers.map((customer) => (
+                <option key={customer.id}>{customer.name}</option>
+              ))}
+            </SelectField>
+            <SelectField
+              label="Service"
+              value={editing.service}
+              onChange={(event) =>
+                setEditing({ ...editing, service: event.target.value })
+              }
+            >
+              {services.map((service) => (
+                <option key={service.id}>{service.name}</option>
+              ))}
+            </SelectField>
+            <SelectField
+              label="Barber"
+              value={editing.barber}
+              onChange={(event) =>
+                setEditing({ ...editing, barber: event.target.value })
+              }
+            >
+              {barbers.map((barber) => (
+                <option key={barber.id}>{barber.name}</option>
+              ))}
+            </SelectField>
+            <div className="form-grid form-grid--two">
+              <TextField
+                label="Time"
+                type="time"
+                value={editing.time}
+                onChange={(event) =>
+                  setEditing({ ...editing, time: event.target.value })
+                }
+              />
+              <SelectField
+                label="Status"
+                value={editing.status}
+                onChange={(event) =>
+                  setEditing({
+                    ...editing,
+                    status: event.target.value as Booking["status"],
+                  })
+                }
+              >
+                <option>Upcoming</option>
+                <option>Completed</option>
+                <option>Cancelled</option>
+              </SelectField>
+            </div>
+            <div className="modal-actions">
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => setEditing(null)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" icon="check">
+                Save changes
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      <Modal
+        open={filtersOpen}
+        title="Filter bookings"
+        onClose={() => setFiltersOpen(false)}
+      >
+        <div className="modal-form">
+          <SelectField
+            label="Barber"
+            value={filterBarber}
+            onChange={(event) => setFilterBarber(event.target.value)}
+          >
+            <option>All barbers</option>
+            {barbers.map((barber) => (
+              <option key={barber.id}>{barber.name}</option>
+            ))}
+          </SelectField>
+          <SelectField
+            label="Service"
+            value={filterService}
+            onChange={(event) => setFilterService(event.target.value)}
+          >
+            <option>All services</option>
+            {services.map((service) => (
+              <option key={service.id}>{service.name}</option>
+            ))}
+          </SelectField>
+          <div className="modal-actions">
+            <Button type="button" onClick={() => setFiltersOpen(false)}>
+              Apply filters
+            </Button>
           </div>
         </div>
       </Modal>

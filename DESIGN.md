@@ -2,7 +2,7 @@
 
 ## Surface
 
-Desktop-first web prototype spanning a public brand landing page, customer account, staff operations, and management oversight.
+Desktop-first web app spanning a public brand landing page, customer account, staff operations, and management oversight.
 
 ## Chosen world
 
@@ -26,15 +26,15 @@ Public pages use an editorial, chair-led reading path with a schedule-board hero
 
 ## Components
 
-`app/components/ui/index.tsx` contains the shared logo, avatar, buttons, metrics, page headers, panels, inputs, selects, badges, tabs, progress bars, modal, empty state, toggle, and toast patterns. `app/components/ui/icons.tsx` is the shared stroke icon language. The screen-level pages live under `app/pages/public`, `app/pages/customer`, `app/pages/staff`, and `app/pages/admin`; reusable shell and UI primitives remain under `app/components`. Replaceable synthetic data lives in the per-entity modules under `app/data`.
+`app/components/ui/index.tsx` contains the shared logo, avatar, buttons, metrics, page headers, panels, inputs, selects, badges, tabs, progress bars, modal, empty state, toggle, and toast patterns. `app/components/ui/icons.tsx` is the shared stroke icon language. The screen-level pages live under `app/pages/public`, `app/pages/customer`, `app/pages/staff`, and `app/pages/admin`; reusable shell and UI primitives remain under `app/components`. Seed data lives in the per-entity modules under `app/data` and can be replaced by API-backed repositories.
 
 ## Interaction language
 
-All navigation, tabs, search fields, filters, row actions, modal forms, status changes, restocks, payment completion, notification/profile menus, and settings toggles work locally in the browser. No state is persisted and no backend or authentication is implied.
+All navigation, tabs, search fields, filters, row actions, modal forms, status changes, restocks, payment completion, notification/profile menus, exports, and settings controls are interactive in the browser. Mutable operational data is retained in browser storage through `app/hooks/usePersistentState.ts`, with clear seams for replacing it with persistence, authentication, payments, and business rules from an API.
 
 ## Open replacement list
 
-- Replace synthetic customer, staff, barber, service, inventory, revenue, and transaction data with verified production data.
+- Replace seed customer, staff, barber, service, inventory, revenue, and transaction data with verified production data.
 - Replace abstract hero/map artwork with approved shop photography or brand assets when available.
 - Connect authentication, persistence, payments, and business rules in a later backend pass.
 

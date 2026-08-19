@@ -195,8 +195,8 @@ export function LandingPage({ go }: { go: (view: ViewId) => void }) {
                 landingServices.find((service) => service.id === serviceId)
                   ?.name
               }{" "}
-              is a synthetic menu item for this prototype. Prices shown are
-              illustrative.
+              is available to book now. Select another service to compare the
+              menu.
             </span>
           </div>
         </section>

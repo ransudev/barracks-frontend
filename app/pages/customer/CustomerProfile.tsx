@@ -1,9 +1,13 @@
 "use client";
 
-import type { ViewId } from "@/app/types/domain";
+import { useState, type FormEvent } from "react";
+import { barbers } from "@/app/data/barbers";
 import { customers } from "@/app/data/customers";
+import { services } from "@/app/data/services";
+import type { ViewId } from "@/app/types/domain";
 import { transactions } from "@/app/data/transactions";
-import { formatCurrency } from "@/app/utils/format";
+import { createInitials, formatCurrency } from "@/app/utils/format";
+import { usePersistentState } from "@/app/hooks/usePersistentState";
 import {
   Avatar,
   Badge,
@@ -13,7 +17,9 @@ import {
   Panel,
   ProgressBar,
   SectionHeading,
-  Toast,
+  Modal,
+  SelectField,
+  TextField,
 } from "@/app/components/ui";
 import { Icon } from "@/app/components/ui/icons";
 
@@ -23,7 +29,103 @@ type CustomerProfileProps = {
 };
 
 export function CustomerProfile({ go, onToast }: CustomerProfileProps) {
-  const customer = customers[0];
+  const [customer, setCustomer] = usePersistentState(
+    "barracks-customer-profile",
+    customers[0],
+  );
+  const [nextVisit, setNextVisit] = usePersistentState(
+    "barracks-customer-next-visit",
+    {
+      id: "BK-1050",
+      day: "Tuesday",
+      date: "April 14, 2026",
+      time: "2:30 PM",
+      service: "Haircut",
+      barber: "Kai Mercer",
+      status: "Confirmed",
+    },
+  );
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileDraft, setProfileDraft] = useState({
+    name: customer.name,
+    email: customer.email,
+    phone: customer.phone,
+  });
+  const [bookingDraft, setBookingDraft] = useState({
+    date: "2026-04-21",
+    time: "10:00",
+    service: services[0].name,
+    barber: barbers[0].name,
+  });
+
+  function openBooking() {
+    setBookingDraft({
+      date: "2026-04-21",
+      time: "10:00",
+      service: services[0].name,
+      barber: barbers[0].name,
+    });
+    setBookingOpen(true);
+  }
+
+  function createBooking(event: FormEvent) {
+    event.preventDefault();
+    if (!bookingDraft.date || !bookingDraft.time) {
+      onToast("Choose a date and time for the visit");
+      return;
+    }
+    const visitDate = new Date(bookingDraft.date + "T12:00:00");
+    setNextVisit({
+      id: "BK-" + String(Date.now()).slice(-4),
+      day: visitDate.toLocaleDateString("en-US", { weekday: "long" }),
+      date: visitDate.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }),
+      time: bookingDraft.time,
+      service: bookingDraft.service,
+      barber: bookingDraft.barber,
+      status: "Confirmed",
+    });
+    setBookingOpen(false);
+    onToast("Visit booked successfully");
+  }
+
+  function saveProfile(event: FormEvent) {
+    event.preventDefault();
+    if (!profileDraft.name.trim() || !profileDraft.email.includes("@")) {
+      onToast("Enter a valid name and email address");
+      return;
+    }
+    setCustomer({
+      ...customer,
+      name: profileDraft.name,
+      initials: profileDraft.name
+        .split(" ")
+        .map((part) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase(),
+      email: profileDraft.email,
+      phone: profileDraft.phone,
+    });
+    setProfileOpen(false);
+    onToast("Profile updated");
+  }
+
+  function openProfile() {
+    setProfileDraft({
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone,
+    });
+    setProfileOpen(true);
+  }
 
   return (
     <div className="customer-page">
@@ -46,16 +148,9 @@ export function CustomerProfile({ go, onToast }: CustomerProfileProps) {
 
       <main className="customer-content">
         <PageHeader
-          eyebrow="Customer account"
           title={"Good afternoon, " + customer.name.split(" ")[0] + "."}
-          subtitle="Your next visit, your preferences, and a little more time for the good stuff."
           action={
-            <Button
-              icon="calendar"
-              onClick={() =>
-                onToast("Booking flow opened — choose a time at the front desk")
-              }
-            >
+            <Button icon="calendar" onClick={openBooking}>
               Book a new visit
             </Button>
           }
@@ -67,36 +162,44 @@ export function CustomerProfile({ go, onToast }: CustomerProfileProps) {
               <div className="customer-next-visit__top">
                 <div>
                   <span className="page-eyebrow">Next visit</span>
-                  <Badge tone="warning" dot>
-                    Confirmed
+                  <Badge
+                    tone={
+                      nextVisit.status === "Confirmed" ? "warning" : "danger"
+                    }
+                  >
+                    {nextVisit.status}
                   </Badge>
                 </div>
-                <span className="customer-next-visit__id">BK-1050</span>
+                <span className="customer-next-visit__id">{nextVisit.id}</span>
               </div>
               <div className="customer-next-visit__date">
-                <strong>Tuesday</strong>
-                <span>April 14, 2026</span>
+                <strong>{nextVisit.day}</strong>
+                <span>{nextVisit.date}</span>
               </div>
               <div className="customer-next-visit__details">
                 <div>
                   <Icon name="clock" size={16} />
                   <span>
                     <small>Time</small>
-                    <strong>2:30 PM</strong>
+                    <strong>{nextVisit.time}</strong>
                   </span>
                 </div>
                 <div>
                   <Icon name="scissors" size={16} />
                   <span>
                     <small>Service</small>
-                    <strong>Haircut</strong>
+                    <strong>{nextVisit.service}</strong>
                   </span>
                 </div>
                 <div>
-                  <Avatar initials="KM" tone="blue" size="sm" />
+                  <Avatar
+                    initials={createInitials(nextVisit.barber)}
+                    tone="blue"
+                    size="sm"
+                  />
                   <span>
                     <small>With</small>
-                    <strong>Kai Mercer</strong>
+                    <strong>{nextVisit.barber}</strong>
                   </span>
                 </div>
               </div>
@@ -104,16 +207,14 @@ export function CustomerProfile({ go, onToast }: CustomerProfileProps) {
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => onToast("Appointment details opened")}
+                  onClick={() => setDetailsOpen(true)}
                 >
                   View details
                 </Button>
                 <button
                   className="link-button link-button--danger"
                   type="button"
-                  onClick={() =>
-                    onToast("Cancellation is simulated in this prototype")
-                  }
+                  onClick={() => setCancelOpen(true)}
                 >
                   Cancel visit
                 </button>
@@ -123,16 +224,11 @@ export function CustomerProfile({ go, onToast }: CustomerProfileProps) {
             <Panel>
               <SectionHeading
                 title="Recent visits"
-                description="Your service history at Barracks."
                 action={
                   <button
                     className="link-button"
                     type="button"
-                    onClick={() =>
-                      onToast(
-                        "Full history is already visible in the prototype",
-                      )
-                    }
+                    onClick={() => setHistoryOpen(true)}
                   >
                     View all
                   </button>
@@ -172,9 +268,7 @@ export function CustomerProfile({ go, onToast }: CustomerProfileProps) {
                   className="icon-button"
                   type="button"
                   aria-label="Edit profile"
-                  onClick={() =>
-                    onToast("Profile editing is simulated in this prototype")
-                  }
+                  onClick={openProfile}
                 >
                   <Icon name="edit" size={16} />
                 </button>
@@ -223,7 +317,208 @@ export function CustomerProfile({ go, onToast }: CustomerProfileProps) {
         </div>
       </main>
 
-      <Toast message="" onClose={() => undefined} />
+      <Modal
+        open={bookingOpen}
+        title="Book a new visit"
+        description="Choose a service, barber, and time that work for you."
+        onClose={() => setBookingOpen(false)}
+      >
+        <form className="modal-form" onSubmit={createBooking}>
+          <SelectField
+            label="Service"
+            value={bookingDraft.service}
+            onChange={(event) =>
+              setBookingDraft({ ...bookingDraft, service: event.target.value })
+            }
+          >
+            {services
+              .filter((service) => service.active)
+              .map((service) => (
+                <option key={service.id}>{service.name}</option>
+              ))}
+          </SelectField>
+          <SelectField
+            label="Barber"
+            value={bookingDraft.barber}
+            onChange={(event) =>
+              setBookingDraft({ ...bookingDraft, barber: event.target.value })
+            }
+          >
+            {barbers
+              .filter((barber) => barber.status !== "Off today")
+              .map((barber) => (
+                <option key={barber.id}>{barber.name}</option>
+              ))}
+          </SelectField>
+          <div className="form-grid form-grid--two">
+            <TextField
+              label="Date"
+              type="date"
+              value={bookingDraft.date}
+              onChange={(event) =>
+                setBookingDraft({ ...bookingDraft, date: event.target.value })
+              }
+            />
+            <TextField
+              label="Time"
+              type="time"
+              value={bookingDraft.time}
+              onChange={(event) =>
+                setBookingDraft({ ...bookingDraft, time: event.target.value })
+              }
+            />
+          </div>
+          <div className="modal-actions">
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => setBookingOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" icon="calendar">
+              Confirm visit
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={detailsOpen}
+        title="Appointment details"
+        description={nextVisit.id}
+        onClose={() => setDetailsOpen(false)}
+      >
+        <div className="detail-modal">
+          <div className="detail-modal__row">
+            <span>Date</span>
+            <strong>{nextVisit.day + ", " + nextVisit.date}</strong>
+          </div>
+          <div className="detail-modal__row">
+            <span>Time</span>
+            <strong>{nextVisit.time}</strong>
+          </div>
+          <div className="detail-modal__row">
+            <span>Service</span>
+            <strong>{nextVisit.service}</strong>
+          </div>
+          <div className="detail-modal__row">
+            <span>Barber</span>
+            <strong>{nextVisit.barber}</strong>
+          </div>
+          <div className="modal-actions">
+            <Button type="button" onClick={() => setDetailsOpen(false)}>
+              Done
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={cancelOpen}
+        title="Cancel visit?"
+        description="This will release the appointment time for another customer."
+        onClose={() => setCancelOpen(false)}
+      >
+        <div className="modal-form">
+          <p className="modal-copy">
+            Cancel the {nextVisit.service.toLowerCase()} on {nextVisit.date} at{" "}
+            {nextVisit.time}?
+          </p>
+          <div className="modal-actions">
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => setCancelOpen(false)}
+            >
+              Keep visit
+            </Button>
+            <Button
+              variant="danger"
+              type="button"
+              onClick={() => {
+                setNextVisit({ ...nextVisit, status: "Cancelled" });
+                setCancelOpen(false);
+                onToast("Visit cancelled");
+              }}
+            >
+              Cancel visit
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={historyOpen}
+        title="Visit history"
+        description="Your completed visits and payments."
+        onClose={() => setHistoryOpen(false)}
+        width="lg"
+      >
+        <div className="detail-modal">
+          <div className="history-list">
+            {transactions.map((transaction) => (
+              <div className="history-row" key={transaction.id}>
+                <span>{transaction.date}</span>
+                <span>
+                  <strong>{transaction.service}</strong>
+                  <small>{transaction.id}</small>
+                </span>
+                <span>{transaction.barber}</span>
+                <strong>{formatCurrency(transaction.amount)}</strong>
+              </div>
+            ))}
+          </div>
+          <div className="modal-actions">
+            <Button type="button" onClick={() => setHistoryOpen(false)}>
+              Done
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={profileOpen}
+        title="Edit profile"
+        onClose={() => setProfileOpen(false)}
+      >
+        <form className="modal-form" onSubmit={saveProfile}>
+          <TextField
+            label="Full name"
+            value={profileDraft.name}
+            onChange={(event) =>
+              setProfileDraft({ ...profileDraft, name: event.target.value })
+            }
+          />
+          <TextField
+            label="Email address"
+            type="email"
+            value={profileDraft.email}
+            onChange={(event) =>
+              setProfileDraft({ ...profileDraft, email: event.target.value })
+            }
+          />
+          <TextField
+            label="Phone number"
+            value={profileDraft.phone}
+            onChange={(event) =>
+              setProfileDraft({ ...profileDraft, phone: event.target.value })
+            }
+          />
+          <div className="modal-actions">
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => setProfileOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" icon="check">
+              Save profile
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

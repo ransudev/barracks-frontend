@@ -27,15 +27,31 @@ function Sidebar({
   active,
   go,
   onToast,
-}: Omit<AppShellProps, "children" | "search" | "setSearch">) {
+  collapsed,
+  onToggle,
+}: Omit<AppShellProps, "children" | "search" | "setSearch"> & {
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
   const isAdmin = area === "admin";
   const navigation = isAdmin ? adminNavigation : staffNavigation;
   const settingsView = isAdmin ? "admin-settings" : "staff-settings";
 
   return (
-    <aside className="sidebar">
+    <aside
+      id="app-sidebar"
+      className={`sidebar ${collapsed ? "is-collapsed" : ""}`}
+    >
       <div className="sidebar__brand">
         <Logo onClick={() => go("landing")} />
+        <IconButton
+          className="sidebar__toggle"
+          label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          icon={collapsed ? "chevronRight" : "chevronLeft"}
+          aria-expanded={!collapsed}
+          aria-controls="app-sidebar"
+          onClick={onToggle}
+        />
       </div>
 
       <div className="sidebar__workspace">
@@ -43,6 +59,8 @@ function Sidebar({
         <button
           className="workspace-switcher"
           type="button"
+          aria-label={`Switch to ${isAdmin ? "shop floor" : "management"}`}
+          title={`Switch to ${isAdmin ? "shop floor" : "management"}`}
           onClick={() => {
             go(isAdmin ? "staff-dashboard" : "admin-dashboard");
             onToast(`Switched to ${isAdmin ? "shop floor" : "management"}`);
@@ -70,6 +88,8 @@ function Sidebar({
           <button
             className={`sidebar__link ${active === item.id ? "is-active" : ""}`}
             type="button"
+            aria-label={item.label}
+            title={item.label}
             key={item.id}
             onClick={() => go(item.id)}
           >
@@ -83,6 +103,8 @@ function Sidebar({
         <button
           className={`sidebar__link ${active === settingsView ? "is-active" : ""}`}
           type="button"
+          aria-label="Settings"
+          title="Settings"
           onClick={() => go(settingsView)}
         >
           <Icon name="settings" size={18} />
@@ -94,9 +116,11 @@ function Sidebar({
         <button
           className="sidebar__signout"
           type="button"
+          aria-label="Sign out"
+          title="Sign out"
           onClick={() => {
             go("landing");
-            onToast("Signed out of the prototype");
+            onToast("Signed out");
           }}
         >
           <Icon name="logOut" size={17} />
@@ -105,6 +129,8 @@ function Sidebar({
         <button
           className="sidebar__profile"
           type="button"
+          aria-label="Open account settings"
+          title="Open account settings"
           onClick={() => go(settingsView)}
         >
           <Avatar
@@ -271,7 +297,7 @@ function Topbar({
                 type="button"
                 onClick={() => {
                   go("landing");
-                  onToast("Signed out of the prototype");
+                  onToast("Signed out");
                 }}
               >
                 <Icon name="logOut" size={15} />
@@ -294,9 +320,20 @@ export function AppShell({
   onToast,
   children,
 }: AppShellProps) {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   return (
-    <div className="app-shell">
-      <Sidebar area={area} active={active} go={go} onToast={onToast} />
+    <div
+      className={`app-shell ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}
+    >
+      <Sidebar
+        area={area}
+        active={active}
+        go={go}
+        onToast={onToast}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((value) => !value)}
+      />
       <div className="app-main">
         <Topbar
           area={area}

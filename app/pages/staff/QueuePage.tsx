@@ -1,17 +1,27 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
+import {
+  useMemo,
+  useState,
+  type Dispatch,
+  type FormEvent,
+  type SetStateAction,
+} from "react";
 import { barbers } from "@/app/data/barbers";
+import { customers } from "@/app/data/customers";
+import { services } from "@/app/data/services";
 import type { QueueEntry } from "@/app/types/domain";
-import { formatCurrency } from "@/app/utils/format";
+import { createInitials, formatCurrency } from "@/app/utils/format";
 import {
   Avatar,
   Badge,
   Button,
   MetricCard,
+  Modal,
   PageHeader,
   Panel,
   SectionHeading,
+  SelectField,
 } from "@/app/components/ui";
 import { Icon } from "@/app/components/ui/icons";
 
@@ -22,11 +32,65 @@ type QueuePageProps = {
 };
 
 export function QueuePage({ queue, setQueue, onToast }: QueuePageProps) {
+  const [addOpen, setAddOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [actionEntry, setActionEntry] = useState<QueueEntry | null>(null);
+  const [commissionOpen, setCommissionOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("All statuses");
+  const [draft, setDraft] = useState({
+    customer: customers[0].name,
+    service: services[0].name,
+    barber: "Unassigned",
+    status: "Waiting" as QueueEntry["status"],
+  });
+
+  const visibleQueue = useMemo(
+    () =>
+      queue.filter(
+        (entry) =>
+          statusFilter === "All statuses" || entry.status === statusFilter,
+      ),
+    [queue, statusFilter],
+  );
+
+  const averageWait = queue.length
+    ? Math.round(
+        queue.reduce(
+          (total, entry) => total + Number.parseInt(entry.wait, 10),
+          0,
+        ) / queue.length,
+      )
+    : 0;
+
+  function addToQueue(event: FormEvent) {
+    event.preventDefault();
+    const customer = customers.find((item) => item.name === draft.customer);
+    const nextId = Math.max(0, ...queue.map((item) => item.id)) + 1;
+    const created: QueueEntry = {
+      id: nextId,
+      customer: draft.customer,
+      initials: createInitials(draft.customer),
+      service: draft.service,
+      barber: draft.barber,
+      status: draft.status,
+      wait: "0m",
+      joined: new Date().toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+      tone: customer?.tone ?? "slate",
+    };
+    setQueue((items) => [...items, created]);
+    setAddOpen(false);
+    onToast(created.customer + " added to the queue");
+  }
+
   function updateStatus(id: number, status: QueueEntry["status"]) {
     setQueue((items) =>
       items.map((item) => (item.id === id ? { ...item, status } : item)),
     );
     onToast("Queue status updated to " + status.toLowerCase());
+    setActionEntry(null);
   }
 
   function assignBarber(id: number, barber: string) {
@@ -40,17 +104,19 @@ export function QueuePage({ queue, setQueue, onToast }: QueuePageProps) {
     );
   }
 
+  function removeFromQueue() {
+    if (!actionEntry) return;
+    setQueue((items) => items.filter((item) => item.id !== actionEntry.id));
+    onToast(actionEntry.customer + " removed from the queue");
+    setActionEntry(null);
+  }
+
   return (
     <>
       <PageHeader
-        eyebrow="Live operations"
         title="Queue management"
-        subtitle="Keep the floor moving, one chair at a time."
         action={
-          <Button
-            icon="plus"
-            onClick={() => onToast("Add to queue form opened")}
-          >
+          <Button icon="plus" onClick={() => setAddOpen(true)}>
             Add to queue
           </Button>
         }
@@ -59,7 +125,6 @@ export function QueuePage({ queue, setQueue, onToast }: QueuePageProps) {
         <MetricCard
           label="Total in queue"
           value={String(queue.length)}
-          note="2 arriving soon"
           icon="queue"
           accent="blue"
         />
@@ -75,8 +140,7 @@ export function QueuePage({ queue, setQueue, onToast }: QueuePageProps) {
         />
         <MetricCard
           label="Average wait"
-          value="28m"
-          note="Down 6m from noon"
+          value={averageWait + "m"}
           icon="clock"
           accent="green"
         />
@@ -85,14 +149,13 @@ export function QueuePage({ queue, setQueue, onToast }: QueuePageProps) {
       <Panel className="queue-panel">
         <SectionHeading
           title="Current queue"
-          description="Assign a barber or move a customer forward."
           action={
             <div className="panel-toolbar">
               <Button
                 variant="secondary"
                 size="sm"
                 icon="filter"
-                onClick={() => onToast("Queue filters opened")}
+                onClick={() => setFilterOpen(true)}
               >
                 Filter
               </Button>
@@ -100,7 +163,10 @@ export function QueuePage({ queue, setQueue, onToast }: QueuePageProps) {
                 variant="ghost"
                 size="sm"
                 icon="refresh"
-                onClick={() => onToast("Queue refreshed")}
+                onClick={() => {
+                  setQueue((items) => [...items]);
+                  onToast("Queue refreshed");
+                }}
               >
                 Refresh
               </Button>
@@ -117,7 +183,7 @@ export function QueuePage({ queue, setQueue, onToast }: QueuePageProps) {
             <span>Wait</span>
             <span>Action</span>
           </div>
-          {queue.map((entry) => (
+          {visibleQueue.map((entry) => (
             <div
               className={
                 "queue-table__row " +
@@ -164,7 +230,6 @@ export function QueuePage({ queue, setQueue, onToast }: QueuePageProps) {
                         ? "success"
                         : "neutral"
                   }
-                  dot
                 >
                   {entry.status}
                 </Badge>
@@ -184,7 +249,7 @@ export function QueuePage({ queue, setQueue, onToast }: QueuePageProps) {
                   className="icon-button icon-button--small"
                   type="button"
                   aria-label={"More actions for " + entry.customer}
-                  onClick={() => onToast("More actions for " + entry.customer)}
+                  onClick={() => setActionEntry(entry)}
                 >
                   <Icon name="more" size={16} />
                 </button>
@@ -196,10 +261,7 @@ export function QueuePage({ queue, setQueue, onToast }: QueuePageProps) {
 
       <div className="queue-bottom-grid">
         <Panel>
-          <SectionHeading
-            title="Barber availability"
-            description="Live floor status and service totals."
-          />
+          <SectionHeading title="Barber availability" />
           <div className="barber-status-grid">
             {barbers.slice(0, 3).map((barber) => (
               <div className="barber-status-card" key={barber.id}>
@@ -211,7 +273,6 @@ export function QueuePage({ queue, setQueue, onToast }: QueuePageProps) {
                   />
                   <Badge
                     tone={barber.status === "On floor" ? "success" : "warning"}
-                    dot
                   >
                     {barber.status}
                   </Badge>
@@ -240,12 +301,11 @@ export function QueuePage({ queue, setQueue, onToast }: QueuePageProps) {
         <Panel className="commission-panel">
           <SectionHeading
             title="Today’s commission"
-            description="30% default commission rate."
             action={
               <button
                 className="link-button"
                 type="button"
-                onClick={() => onToast("Commission detail opened")}
+                onClick={() => setCommissionOpen(true)}
               >
                 View details <Icon name="arrowRight" size={14} />
               </button>
@@ -284,6 +344,178 @@ export function QueuePage({ queue, setQueue, onToast }: QueuePageProps) {
           </div>
         </Panel>
       </div>
+
+      <Modal
+        open={addOpen}
+        title="Add to queue"
+        description="Create a walk-in entry and assign its initial status."
+        onClose={() => setAddOpen(false)}
+      >
+        <form className="modal-form" onSubmit={addToQueue}>
+          <SelectField
+            label="Customer"
+            value={draft.customer}
+            onChange={(event) =>
+              setDraft({ ...draft, customer: event.target.value })
+            }
+          >
+            {customers.map((customer) => (
+              <option key={customer.id}>{customer.name}</option>
+            ))}
+          </SelectField>
+          <SelectField
+            label="Service"
+            value={draft.service}
+            onChange={(event) =>
+              setDraft({ ...draft, service: event.target.value })
+            }
+          >
+            {services
+              .filter((service) => service.active)
+              .map((service) => (
+                <option key={service.id}>{service.name}</option>
+              ))}
+          </SelectField>
+          <SelectField
+            label="Barber"
+            value={draft.barber}
+            onChange={(event) =>
+              setDraft({ ...draft, barber: event.target.value })
+            }
+          >
+            <option>Unassigned</option>
+            {barbers
+              .filter((barber) => barber.status !== "Off today")
+              .map((barber) => (
+                <option key={barber.id}>{barber.name}</option>
+              ))}
+          </SelectField>
+          <SelectField
+            label="Status"
+            value={draft.status}
+            onChange={(event) =>
+              setDraft({
+                ...draft,
+                status: event.target.value as QueueEntry["status"],
+              })
+            }
+          >
+            <option>Waiting</option>
+            <option>Ready</option>
+            <option>In chair</option>
+          </SelectField>
+          <div className="modal-actions">
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => setAddOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" icon="plus">
+              Add customer
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={filterOpen}
+        title="Filter queue"
+        onClose={() => setFilterOpen(false)}
+      >
+        <div className="modal-form">
+          <SelectField
+            label="Status"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            <option>All statuses</option>
+            <option>Waiting</option>
+            <option>Ready</option>
+            <option>In chair</option>
+          </SelectField>
+          <div className="modal-actions">
+            <Button type="button" onClick={() => setFilterOpen(false)}>
+              Apply filter
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(actionEntry)}
+        title={actionEntry ? "Queue actions" : "Queue actions"}
+        description={actionEntry?.customer}
+        onClose={() => setActionEntry(null)}
+      >
+        {actionEntry && (
+          <div className="modal-form">
+            <div className="detail-modal__row">
+              <span>Current status</span>
+              <Badge
+                tone={actionEntry.status === "In chair" ? "info" : "neutral"}
+              >
+                {actionEntry.status}
+              </Badge>
+            </div>
+            <div className="modal-actions modal-actions--stack">
+              {actionEntry.status !== "In chair" && (
+                <Button
+                  type="button"
+                  onClick={() => updateStatus(actionEntry.id, "In chair")}
+                >
+                  Start chair
+                </Button>
+              )}
+              {actionEntry.status !== "Ready" && (
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => updateStatus(actionEntry.id, "Ready")}
+                >
+                  Mark ready
+                </Button>
+              )}
+              <Button variant="danger" type="button" onClick={removeFromQueue}>
+                Remove from queue
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={commissionOpen}
+        title="Today’s commission"
+        description="Commission totals by barber for today."
+        onClose={() => setCommissionOpen(false)}
+        width="lg"
+      >
+        <div className="detail-modal">
+          {barbers.map((barber) => (
+            <div className="detail-modal__row" key={barber.id}>
+              <span className="table-person">
+                <Avatar
+                  initials={barber.initials}
+                  tone={barber.tone}
+                  size="sm"
+                />
+                <strong>{barber.name}</strong>
+              </span>
+              <span>{barber.services} services</span>
+              <strong className="text-amber">
+                {formatCurrency(barber.commission)}
+              </strong>
+            </div>
+          ))}
+          <div className="modal-actions">
+            <Button type="button" onClick={() => setCommissionOpen(false)}>
+              Done
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }

@@ -47,7 +47,7 @@ export function PageRouter({
         <InventoryPage items={stock} setItems={setStock} onToast={onToast} />
       );
     case "staff-settings":
-      return <StaffSettingsPage onToast={onToast} />;
+      return <StaffSettingsPage go={go} onToast={onToast} />;
     case "admin-dashboard":
       return <AdminDashboard go={go} onToast={onToast} />;
     case "staff-management":
@@ -70,6 +70,6 @@ export function PageRouter({
     case "admin-settings":
       return <AdminSettings onToast={onToast} />;
     default:
-      return <StaffDashboard go={go} onToast={onToast} />;
+      return <StaffDashboard go={go} />;
   }
 }

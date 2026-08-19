@@ -39,6 +39,7 @@ export function InventoryPage({
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All categories");
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [newItem, setNewItem] = useState({
     name: "",
     category: "Supplies",
@@ -56,18 +57,6 @@ export function InventoryPage({
   );
   const lowStock = items.filter((item) => item.current <= item.minimum);
   const outOfStock = items.filter((item) => item.current === 0);
-
-  function restock(item: InventoryItem) {
-    const quantity = Math.max(item.minimum - item.current + 5, 5);
-    setItems((list) =>
-      list.map((row) =>
-        row.id === item.id
-          ? { ...row, current: Math.min(row.maximum, row.current + quantity) }
-          : row,
-      ),
-    );
-    onToast(item.name + " restocked by " + quantity + " units");
-  }
 
   function addItem(event: FormEvent) {
     event.preventDefault();
@@ -98,16 +87,49 @@ export function InventoryPage({
     onToast(created.name + " added to inventory");
   }
 
+  function saveItem(event: FormEvent) {
+    event.preventDefault();
+    if (!editing?.name.trim()) {
+      onToast("Add an item name first");
+      return;
+    }
+    const current = Number(editing.current);
+    const minimum = Number(editing.minimum);
+    const unitCost = Number(editing.unitCost);
+    if (
+      !Number.isFinite(current) ||
+      !Number.isFinite(minimum) ||
+      !Number.isFinite(unitCost) ||
+      current < 0 ||
+      minimum < 0 ||
+      unitCost < 0
+    ) {
+      onToast("Enter valid inventory values");
+      return;
+    }
+
+    setItems((list) =>
+      list.map((item) =>
+        item.id === editing.id
+          ? {
+              ...editing,
+              name: editing.name.trim(),
+              current,
+              minimum,
+              maximum: Math.max(editing.maximum, minimum * 4),
+              unitCost,
+            }
+          : item,
+      ),
+    );
+    onToast(editing.name + " updated");
+    setEditing(null);
+  }
+
   return (
     <>
       <PageHeader
-        eyebrow={admin ? "Management / Stock" : "Shop floor / Stock"}
         title={admin ? "Inventory management" : "Inventory"}
-        subtitle={
-          admin
-            ? "Keep the back room as considered as the front."
-            : "Know what is running low before the next service."
-        }
         action={
           <Button icon="plus" onClick={() => setModalOpen(true)}>
             Add item
@@ -118,7 +140,6 @@ export function InventoryPage({
         <MetricCard
           label="Total items"
           value={String(items.length)}
-          note="Across 3 categories"
           icon="box"
           accent="blue"
         />
@@ -133,7 +154,6 @@ export function InventoryPage({
         <MetricCard
           label="Out of stock"
           value={String(outOfStock.length)}
-          note="Nothing blocking today"
           icon="x"
           accent="amber"
         />
@@ -145,7 +165,6 @@ export function InventoryPage({
               0,
             ),
           )}
-          note="At current stock"
           icon="wallet"
           accent="green"
         />
@@ -176,7 +195,6 @@ export function InventoryPage({
       <Panel className="inventory-panel">
         <SectionHeading
           title="Stock levels"
-          description="Edit levels, reorder supplies, and keep the shelves ready."
           action={
             <div className="panel-toolbar">
               <SearchInput
@@ -221,7 +239,7 @@ export function InventoryPage({
                 </span>
                 <span>{item.minimum}</span>
                 <span>
-                  <Badge tone={isOut || isLow ? "danger" : "success"} dot>
+                  <Badge tone={isOut || isLow ? "danger" : "success"}>
                     {isOut ? "Out of stock" : isLow ? "Low stock" : "In stock"}
                   </Badge>
                 </span>
@@ -229,18 +247,10 @@ export function InventoryPage({
                   <button
                     className="row-action"
                     type="button"
-                    onClick={() => onToast("Editing " + item.name + " locally")}
+                    onClick={() => setEditing({ ...item })}
                   >
                     <Icon name="edit" size={14} />
                     Edit
-                  </button>
-                  <button
-                    className="row-action row-action--green"
-                    type="button"
-                    onClick={() => restock(item)}
-                  >
-                    <Icon name="refresh" size={14} />
-                    {isLow ? "Restock" : "Update"}
                   </button>
                 </span>
               </div>
@@ -321,6 +331,86 @@ export function InventoryPage({
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={Boolean(editing)}
+        title="Edit inventory item"
+        onClose={() => setEditing(null)}
+      >
+        {editing && (
+          <form className="modal-form" onSubmit={saveItem}>
+            <TextField
+              label="Item name"
+              value={editing.name}
+              onChange={(event) =>
+                setEditing({ ...editing, name: event.target.value })
+              }
+            />
+            <div className="form-grid form-grid--three">
+              <SelectField
+                label="Category"
+                value={editing.category}
+                onChange={(event) =>
+                  setEditing({
+                    ...editing,
+                    category: event.target.value as InventoryItem["category"],
+                  })
+                }
+              >
+                <option>Supplies</option>
+                <option>Equipment</option>
+                <option>Products</option>
+              </SelectField>
+              <TextField
+                label="Current stock"
+                type="number"
+                min="0"
+                value={String(editing.current)}
+                onChange={(event) =>
+                  setEditing({
+                    ...editing,
+                    current: Number(event.target.value),
+                  })
+                }
+              />
+              <TextField
+                label="Min level"
+                type="number"
+                min="0"
+                value={String(editing.minimum)}
+                onChange={(event) =>
+                  setEditing({
+                    ...editing,
+                    minimum: Number(event.target.value),
+                  })
+                }
+              />
+            </div>
+            <TextField
+              label="Unit cost"
+              type="number"
+              min="0"
+              step="0.01"
+              value={String(editing.unitCost)}
+              onChange={(event) =>
+                setEditing({ ...editing, unitCost: Number(event.target.value) })
+              }
+            />
+            <div className="modal-actions">
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => setEditing(null)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" icon="check">
+                Save changes
+              </Button>
+            </div>
+          </form>
+        )}
       </Modal>
     </>
   );

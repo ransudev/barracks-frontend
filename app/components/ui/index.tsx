@@ -111,18 +111,11 @@ export function IconButton({
 export function Badge({
   children,
   tone = "neutral",
-  dot = false,
 }: {
   children: ReactNode;
   tone?: "neutral" | "success" | "warning" | "danger" | "info" | "purple";
-  dot?: boolean;
 }) {
-  return (
-    <span className={`badge badge--${tone}`}>
-      {dot && <span className="badge-dot" />}
-      {children}
-    </span>
-  );
+  return <span className={`badge badge--${tone}`}>{children}</span>;
 }
 
 export function MetricCard({
@@ -132,7 +125,6 @@ export function MetricCard({
   changeTone = "positive",
   icon,
   accent = "blue",
-  note,
 }: {
   label: string;
   value: string;
@@ -140,7 +132,6 @@ export function MetricCard({
   changeTone?: "positive" | "warning" | "negative";
   icon?: IconName;
   accent?: Tone;
-  note?: string;
 }) {
   return (
     <section className={`metric-card metric-card--${accent}`}>
@@ -153,21 +144,18 @@ export function MetricCard({
         )}
       </div>
       <strong className="metric-card__value">{value}</strong>
-      {(change || note) && (
+      {change && (
         <div className="metric-card__meta">
-          {change && (
-            <span className={`metric-change metric-change--${changeTone}`}>
-              {changeTone === "positive" ? (
-                <Icon name="arrowUp" size={12} />
-              ) : changeTone === "negative" ? (
-                <Icon name="arrowDown" size={12} />
-              ) : (
-                <Icon name="info" size={12} />
-              )}
-              {change}
-            </span>
-          )}
-          {note && <span>{note}</span>}
+          <span className={`metric-change metric-change--${changeTone}`}>
+            {changeTone === "positive" ? (
+              <Icon name="arrowUp" size={12} />
+            ) : changeTone === "negative" ? (
+              <Icon name="arrowDown" size={12} />
+            ) : (
+              <Icon name="info" size={12} />
+            )}
+            {change}
+          </span>
         </div>
       )}
     </section>
@@ -175,24 +163,18 @@ export function MetricCard({
 }
 
 export function PageHeader({
-  eyebrow,
   title,
-  subtitle,
   action,
   children,
 }: {
-  eyebrow?: string;
   title: string;
-  subtitle?: string;
   action?: ReactNode;
   children?: ReactNode;
 }) {
   return (
     <header className="page-header">
       <div>
-        {eyebrow && <span className="page-eyebrow">{eyebrow}</span>}
         <h1>{title}</h1>
-        {subtitle && <p>{subtitle}</p>}
       </div>
       {action || children ? (
         <div className="page-header__actions">
@@ -304,6 +286,9 @@ export function TextField({
   type = "text",
   icon,
   className = "",
+  min,
+  max,
+  step,
 }: {
   label?: string;
   value?: string;
@@ -312,6 +297,9 @@ export function TextField({
   type?: string;
   icon?: IconName;
   className?: string;
+  min?: string;
+  max?: string;
+  step?: string;
 }) {
   return (
     <label className={`field ${className}`}>
@@ -323,6 +311,9 @@ export function TextField({
           value={value}
           onChange={onChange}
           placeholder={placeholder}
+          min={min}
+          max={max}
+          step={step}
         />
       </span>
     </label>

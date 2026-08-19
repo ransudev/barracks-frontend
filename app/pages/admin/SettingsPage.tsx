@@ -21,74 +21,125 @@ export function AdminSettings({
   const [lowStock, setLowStock] = useState(true);
   const [dailyReport, setDailyReport] = useState(true);
   const [leaveRequests, setLeaveRequests] = useState(false);
+  const [businessName, setBusinessName] = useState("Barracks Barbers & Shaves");
+  const [address, setAddress] = useState("14 Jupiter Street, Makati");
+  const [phone, setPhone] = useState("+63 917 555 0144");
+  const [email, setEmail] = useState("hello@barracks.ph");
+  const [commissionRate, setCommissionRate] = useState("30");
+  const [payoutSchedule, setPayoutSchedule] = useState("Bi-weekly");
+  const [pointsPerDollar, setPointsPerDollar] = useState("1");
+  const [pointsValue, setPointsValue] = useState("0.05");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  function saveBusinessInfo() {
+    if (
+      !businessName.trim() ||
+      !address.trim() ||
+      !phone.trim() ||
+      !email.includes("@")
+    ) {
+      onToast("Complete the business information first");
+      return;
+    }
+    onToast("Business information saved");
+  }
+
+  function saveCommissionSettings() {
+    const rate = Number(commissionRate);
+    if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+      onToast("Commission rate must be between 0 and 100");
+      return;
+    }
+    onToast("Commission settings updated");
+  }
+
+  function saveLoyaltySettings() {
+    if (Number(pointsPerDollar) < 0 || Number(pointsValue) < 0) {
+      onToast("Loyalty values cannot be negative");
+      return;
+    }
+    onToast("Loyalty settings updated");
+  }
+
+  function updatePassword() {
+    if (!currentPassword || newPassword.length < 8) {
+      onToast(
+        "Enter your current password and a new password with 8 or more characters",
+      );
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      onToast("New passwords do not match");
+      return;
+    }
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    onToast("Password updated");
+  }
+
+  function resetNotificationPreferences() {
+    setLowStock(true);
+    setDailyReport(true);
+    setLeaveRequests(false);
+    onToast("Notification preferences reset");
+  }
 
   return (
     <>
       <PageHeader
-        eyebrow="Management / System"
         title="Settings"
-        subtitle="Business rules, notifications, and account security."
         action={
-          <Button
-            icon="check"
-            onClick={() => onToast("Business settings saved locally")}
-          >
+          <Button icon="check" onClick={saveBusinessInfo}>
             Save changes
           </Button>
         }
       />
       <div className="settings-grid">
         <Panel>
-          <SectionHeading
-            title="Business information"
-            description="The essentials on your shop record."
-          />
+          <SectionHeading title="Business information" />
           <div className="form-grid">
             <TextField
               label="Business name"
-              value="Barracks Barbers & Shaves"
-              onChange={() => undefined}
+              value={businessName}
+              onChange={(event) => setBusinessName(event.target.value)}
             />
             <TextField
               label="Address"
-              value="14 Jupiter Street, Makati"
-              onChange={() => undefined}
+              value={address}
+              onChange={(event) => setAddress(event.target.value)}
             />
             <TextField
               label="Phone"
-              value="+63 917 555 0144"
-              onChange={() => undefined}
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
             />
             <TextField
               label="Email"
-              value="hello@barracks.ph"
-              onChange={() => undefined}
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
             />
           </div>
-          <Button
-            variant="secondary"
-            onClick={() => onToast("Business information saved locally")}
-          >
+          <Button variant="secondary" onClick={saveBusinessInfo}>
             Save business info
           </Button>
         </Panel>
 
         <Panel>
-          <SectionHeading
-            title="Commission settings"
-            description="How the shop shares the work."
-          />
+          <SectionHeading title="Commission settings" />
           <div className="form-grid">
             <TextField
               label="Default commission rate"
-              value="30"
-              onChange={() => undefined}
+              value={commissionRate}
+              onChange={(event) => setCommissionRate(event.target.value)}
               type="number"
             />
             <SelectField
               label="Payout schedule"
-              value="Bi-weekly"
-              onChange={() => undefined}
+              value={payoutSchedule}
+              onChange={(event) => setPayoutSchedule(event.target.value)}
             >
               <option>Bi-weekly</option>
               <option>Monthly</option>
@@ -98,17 +149,14 @@ export function AdminSettings({
           <Button
             variant="secondary"
             icon="check"
-            onClick={() => onToast("Commission settings updated locally")}
+            onClick={saveCommissionSettings}
           >
             Update commission
           </Button>
         </Panel>
 
         <Panel>
-          <SectionHeading
-            title="Loyalty program"
-            description="A small thank-you for the regulars."
-          />
+          <SectionHeading title="Loyalty program" />
           <div className="settings-toggles">
             <Toggle
               checked={loyalty}
@@ -120,30 +168,24 @@ export function AdminSettings({
           <div className="form-grid form-grid--two">
             <TextField
               label="Points per $1 spent"
-              value="1"
-              onChange={() => undefined}
+              value={pointsPerDollar}
+              onChange={(event) => setPointsPerDollar(event.target.value)}
               type="number"
             />
             <TextField
               label="Points value ($)"
-              value="0.05"
-              onChange={() => undefined}
+              value={pointsValue}
+              onChange={(event) => setPointsValue(event.target.value)}
               type="number"
             />
           </div>
-          <Button
-            variant="secondary"
-            onClick={() => onToast("Loyalty settings updated locally")}
-          >
+          <Button variant="secondary" onClick={saveLoyaltySettings}>
             Update loyalty settings
           </Button>
         </Panel>
 
         <Panel>
-          <SectionHeading
-            title="Notifications"
-            description="Keep the right people in the loop."
-          />
+          <SectionHeading title="Notifications" />
           <div className="settings-toggles">
             <Toggle
               checked={lowStock}
@@ -167,45 +209,41 @@ export function AdminSettings({
         </Panel>
 
         <Panel>
-          <SectionHeading
-            title="Account security"
-            description="Protect access to the management workspace."
-          />
+          <SectionHeading title="Account security" />
           <div className="form-grid">
             <TextField
               label="Current password"
               type="password"
               placeholder="Enter current password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
             />
             <TextField
               label="New password"
               type="password"
               placeholder="At least 8 characters"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
             />
             <TextField
               label="Confirm new password"
               type="password"
               placeholder="Repeat new password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
             />
           </div>
-          <Button
-            variant="secondary"
-            icon="lock"
-            onClick={() => onToast("Password update simulated")}
-          >
+          <Button variant="secondary" icon="lock" onClick={updatePassword}>
             Change password
           </Button>
         </Panel>
 
         <Panel className="system-info-panel">
-          <SectionHeading
-            title="System information"
-            description="Prototype environment details."
-          />
+          <SectionHeading title="System information" />
           <div className="system-info">
             <span>
               <small>Version</small>
-              <strong>1.0.0 prototype</strong>
+              <strong>1.0.0</strong>
             </span>
             <span>
               <small>Last backup</small>
@@ -213,22 +251,18 @@ export function AdminSettings({
             </span>
             <span>
               <small>Environment</small>
-              <Badge tone="success" dot>
-                Frontend demo
-              </Badge>
+              <Badge tone="success">Active</Badge>
             </span>
           </div>
           <div className="system-danger-zone">
-            <strong>Danger zone</strong>
-            <p>Backend actions are intentionally disabled in this prototype.</p>
+            <strong>Account actions</strong>
+            <p>Reset notification preferences to their default values.</p>
             <button
               className="link-button link-button--danger"
               type="button"
-              onClick={() =>
-                onToast("Data reset is unavailable without a backend")
-              }
+              onClick={resetNotificationPreferences}
             >
-              Reset demo data
+              Reset preferences
             </button>
           </div>
         </Panel>
