@@ -1,20 +1,20 @@
 import type { Dispatch, SetStateAction } from "react";
-import { AdminDashboard } from "@/app/components/admin/AdminDashboard";
-import { BarbersManagement } from "@/app/components/admin/BarbersManagement";
-import { ReportsPage } from "@/app/components/admin/ReportsPage";
-import { ServicesManagement } from "@/app/components/admin/ServicesManagement";
-import { StaffManagement } from "@/app/components/admin/StaffManagement";
-import { AdminSettings } from "@/app/components/admin/SettingsPage";
-import { BookingsPage } from "@/app/components/staff/BookingsPage";
-import { CustomersPage } from "@/app/components/staff/CustomersPage";
-import { InventoryPage } from "@/app/components/staff/InventoryPage";
-import { PaymentPage } from "@/app/components/staff/PaymentPage";
-import { QueuePage } from "@/app/components/staff/QueuePage";
-import { StaffDashboard } from "@/app/components/staff/StaffDashboard";
-import { StaffSettingsPage } from "@/app/components/staff/SettingsPage";
+import { AdminDashboard } from "@/app/pages/admin/AdminDashboard";
+import { BarbersManagement } from "@/app/pages/admin/BarbersManagement";
+import { ReportsPage } from "@/app/pages/admin/ReportsPage";
+import { ServicesManagement } from "@/app/pages/admin/ServicesManagement";
+import { StaffManagement } from "@/app/pages/admin/StaffManagement";
+import { AdminSettings } from "@/app/pages/admin/SettingsPage";
+import { BookingsPage } from "@/app/pages/staff/BookingsPage";
+import { CustomersPage } from "@/app/pages/staff/CustomersPage";
+import { InventoryPage } from "@/app/pages/staff/InventoryPage";
+import { PaymentPage } from "@/app/pages/staff/PaymentPage";
+import { QueuePage } from "@/app/pages/staff/QueuePage";
+import { StaffDashboard } from "@/app/pages/staff/StaffDashboard";
+import { StaffSettingsPage } from "@/app/pages/staff/SettingsPage";
 import type { InventoryItem, QueueEntry, ViewId } from "@/app/types/domain";
 
-type AppPageProps = {
+type PageRouterProps = {
   view: ViewId;
   go: (view: ViewId) => void;
   queue: QueueEntry[];
@@ -24,7 +24,7 @@ type AppPageProps = {
   onToast: (message: string) => void;
 };
 
-export function AppPage({
+export function PageRouter({
   view,
   go,
   queue,
@@ -32,7 +32,7 @@ export function AppPage({
   stock,
   setStock,
   onToast,
-}: AppPageProps) {
+}: PageRouterProps) {
   switch (view) {
     case "queue":
       return <QueuePage queue={queue} setQueue={setQueue} onToast={onToast} />;

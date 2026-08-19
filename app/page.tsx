@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { AppShell } from "@/app/components/layout/AppShell";
-import { LoginPage } from "@/app/components/auth/LoginPage";
-import { CustomerProfile } from "@/app/components/customer/CustomerProfile";
-import { LandingPage } from "@/app/components/public/LandingPage";
-import { AppPage } from "@/app/components/routing/AppPage";
+import { LoginPage } from "@/app/pages/auth/LoginPage";
+import { CustomerProfile } from "@/app/pages/customer/CustomerProfile";
+import { LandingPage } from "@/app/pages/public/LandingPage";
+import { PageRouter } from "@/app/pages/PageRouter";
 import { Toast } from "@/app/components/ui";
 import { inventory } from "@/app/data/inventory";
 import { queueEntries } from "@/app/data/queue";
@@ -75,7 +75,7 @@ export default function Home() {
         setSearch={setSearch}
         onToast={onToast}
       >
-        <AppPage
+        <PageRouter
           view={view}
           go={go}
           queue={queue}

@@ -26,7 +26,7 @@ Public pages use an editorial, chair-led reading path with a schedule-board hero
 
 ## Components
 
-`app/components/ui/index.tsx` contains the shared logo, avatar, buttons, metrics, page headers, panels, inputs, selects, badges, tabs, progress bars, modal, empty state, toggle, and toast patterns. `app/components/ui/icons.tsx` is the shared stroke icon language. The feature screens live under `app/components/public`, `app/components/customer`, `app/components/staff`, and `app/components/admin`; replaceable synthetic data lives in the per-entity modules under `app/data`.
+`app/components/ui/index.tsx` contains the shared logo, avatar, buttons, metrics, page headers, panels, inputs, selects, badges, tabs, progress bars, modal, empty state, toggle, and toast patterns. `app/components/ui/icons.tsx` is the shared stroke icon language. The screen-level pages live under `app/pages/public`, `app/pages/customer`, `app/pages/staff`, and `app/pages/admin`; reusable shell and UI primitives remain under `app/components`. Replaceable synthetic data lives in the per-entity modules under `app/data`.
 
 ## Interaction language
 
