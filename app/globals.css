@@ -1530,7 +1530,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .public-site .landing-services {
   width: min(100%, 1240px);
-  padding: 78px 28px 92px;
+  padding: 110px 28px 92px;
   background: var(--public-paper);
   border-bottom: 1px solid var(--public-line);
 }
