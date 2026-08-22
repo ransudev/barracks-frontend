@@ -10,10 +10,16 @@ type LoginPageProps = {
   onToast: (message: string) => void;
 };
 
+type AuthMode = "login" | "signup";
+
 export function LoginPage({ go, onToast }: LoginPageProps) {
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("jules@barracks.ph");
   const [password, setPassword] = useState("barracks123");
+  const [signupName, setSignupName] = useState("");
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
   const [error, setError] = useState("");
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState("jules@barracks.ph");
@@ -31,6 +37,61 @@ export function LoginPage({ go, onToast }: LoginPageProps) {
     setError("");
     onToast("Signed in as Jules Mendoza");
     go("staff-dashboard");
+  }
+
+  function submitSignup(event: FormEvent) {
+    event.preventDefault();
+    const name = signupName.trim();
+    const accountEmail = signupEmail.trim();
+
+    if (!name) {
+      setError("Enter your full name.");
+      return;
+    }
+    if (!accountEmail.includes("@")) {
+      setError("Enter a valid email address.");
+      return;
+    }
+    if (signupPassword.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
+    const initials = name
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+
+    try {
+      window.localStorage.setItem(
+        "barracks-customer-profile",
+        JSON.stringify({
+          id: "customer-" + Date.now(),
+          name,
+          initials,
+          phone: "",
+          email: accountEmail,
+          visits: 0,
+          points: 0,
+          preferredBarber: "No preference yet",
+          lastVisit: "New customer",
+          tone: "slate",
+        }),
+      );
+    } catch {
+      // Keep the signup flow usable when browser storage is unavailable.
+    }
+
+    setError("");
+    onToast("Customer account created");
+    go("customer");
+  }
+
+  function switchAuthMode(nextMode: AuthMode) {
+    setAuthMode(nextMode);
+    setError("");
   }
 
   function sendRecovery(event: FormEvent) {
@@ -80,60 +141,131 @@ export function LoginPage({ go, onToast }: LoginPageProps) {
       <main className="login-page__main">
         <div className="login-card">
           <div className="login-card__head">
-            <h1>Good to see you.</h1>
-            <p>Sign in to pick up where the day left off.</p>
+            <h1>
+              {authMode === "login"
+                ? "Good to see you."
+                : "Make room for better visits."}
+            </h1>
+            <p>
+              {authMode === "login"
+                ? "Sign in to pick up where the day left off."
+                : "Create a customer account to manage your Barracks visits."}
+            </p>
           </div>
 
-          <form className="login-form" onSubmit={submit}>
-            <TextField
-              label="Email address"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              type="email"
-              icon="mail"
-            />
-            <label className="field">
-              <span className="field__label">Password</span>
-              <span className="input-wrap">
-                <Icon name="lock" size={16} />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
+          {authMode === "login" ? (
+            <form className="login-form" onSubmit={submit}>
+              <TextField
+                label="Email address"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                type="email"
+                icon="mail"
+              />
+              <label className="field">
+                <span className="field__label">Password</span>
+                <span className="input-wrap">
+                  <Icon name="lock" size={16} />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="input-action"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    <Icon name={showPassword ? "eyeOff" : "eye"} size={16} />
+                  </button>
+                </span>
+              </label>
+              <div className="login-form__meta">
+                <label className="checkbox-label">
+                  <input type="checkbox" defaultChecked />{" "}
+                  <span>Keep me signed in</span>
+                </label>
                 <button
                   type="button"
-                  className="input-action"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  onClick={() => setShowPassword(!showPassword)}
+                  className="link-button"
+                  onClick={() => setRecoveryOpen(true)}
                 >
-                  <Icon name={showPassword ? "eyeOff" : "eye"} size={16} />
+                  Forgot password?
                 </button>
-              </span>
-            </label>
-            <div className="login-form__meta">
-              <label className="checkbox-label">
-                <input type="checkbox" defaultChecked />{" "}
-                <span>Keep me signed in</span>
-              </label>
-              <button
-                type="button"
-                className="link-button"
-                onClick={() => setRecoveryOpen(true)}
+              </div>
+              <Button
+                type="submit"
+                size="lg"
+                iconAfter="arrowRight"
+                className="login-submit"
               >
-                Forgot password?
-              </button>
-            </div>
-            <Button
-              type="submit"
-              size="lg"
-              iconAfter="arrowRight"
-              className="login-submit"
-            >
-              Continue to workspace
-            </Button>
-          </form>
+                Continue to workspace
+              </Button>
+            </form>
+          ) : (
+            <form className="login-form login-form--signup" onSubmit={submitSignup}>
+              <TextField
+                label="Full name"
+                value={signupName}
+                onChange={(event) => setSignupName(event.target.value)}
+                icon="userPlus"
+              />
+              <TextField
+                label="Email address"
+                value={signupEmail}
+                onChange={(event) => setSignupEmail(event.target.value)}
+                type="email"
+                icon="mail"
+              />
+              <label className="field">
+                <span className="field__label">Password</span>
+                <span className="input-wrap">
+                  <Icon name="lock" size={16} />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={signupPassword}
+                    onChange={(event) => setSignupPassword(event.target.value)}
+                    aria-describedby="signup-password-hint"
+                  />
+                  <button
+                    type="button"
+                    className="input-action"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    <Icon name={showPassword ? "eyeOff" : "eye"} size={16} />
+                  </button>
+                </span>
+                <span className="field__hint" id="signup-password-hint">
+                  Use at least 8 characters.
+                </span>
+              </label>
+              <Button
+                type="submit"
+                size="lg"
+                iconAfter="arrowRight"
+                className="login-submit"
+              >
+                Create customer account
+              </Button>
+            </form>
+          )}
           {error && <p className="form-error">{error}</p>}
+          <div className="login-card__switch">
+            <span>
+              {authMode === "login"
+                ? "Need a customer account?"
+                : "Already have an account?"}
+            </span>
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => switchAuthMode(authMode === "login" ? "signup" : "login")}
+            >
+              {authMode === "login" ? "Register" : "Sign in"}
+            </button>
+          </div>
         </div>
       </main>
 

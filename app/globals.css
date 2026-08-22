@@ -660,6 +660,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .checkbox-label { align-items: center; display: inline-flex; gap: 7px; color: var(--text-muted); font-size: 11px; }
 .checkbox-label input { width: 14px; height: 14px; accent-color: var(--blue); }
 .login-submit { width: 100%; }
+.login-card__switch { align-items: center; display: flex; justify-content: center; gap: 6px; margin-top: 28px; color: var(--text-muted); font-size: 12px; }
+.login-card__switch .link-button { font-size: 12px; }
+.field__hint { color: var(--text-muted); font-size: 11px; line-height: 1.35; }
+.login-form--signup { gap: 15px; }
 
 /* Public marketing page */
 .public-site { min-height: 100vh; overflow: hidden; background: var(--ink); color: var(--text); }
