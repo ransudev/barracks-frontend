@@ -12,5 +12,5 @@ find . -mindepth 1 -maxdepth 1 \
   -exec rm -rf {} +
 
 cp -a "$SRC/barracks-pwa/." .
-npm ci
+npm ci --include=dev
 npm run build
