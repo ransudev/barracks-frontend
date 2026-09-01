@@ -1,5 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "git clone --depth 1 --branch sprint-1 https://github.com/ransudev/Barracks-PWA.git /tmp/barracks-pwa-src && find . -mindepth 1 -maxdepth 1 ! -name '.git' ! -name 'vercel.json' -exec rm -rf {} + && cp -a /tmp/barracks-pwa-src/barracks-pwa/. . && npm ci && npm run build"
+  "buildCommand": "bash deploy-sprint1.sh"
 }
